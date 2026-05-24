@@ -236,7 +236,7 @@ internal class DestinationListOverlay : MonoBehaviour
             return;
         }
 
-        if (input.IsKeyJustPressed(KeyCode.R))
+        if (input.IsKeyJustPressed(KeyCode.RightArrow))
         {
             this.BeginRename();
             return;
@@ -244,13 +244,7 @@ internal class DestinationListOverlay : MonoBehaviour
 
         if (input.IsKeyJustPressed(KeyCode.LeftArrow))
         {
-            this.ChangeUiScale(-1);
-            return;
-        }
-
-        if (input.IsKeyJustPressed(KeyCode.RightArrow))
-        {
-            this.ChangeUiScale(1);
+            this.ChangeUiScale();
             return;
         }
 
@@ -335,7 +329,7 @@ internal class DestinationListOverlay : MonoBehaviour
                 this.DrawHintRow("1-9 绑定", "Esc 取消");
             else
             {
-                this.DrawHintRow("↑↓ 选择", "← → 字号", "Enter 前往", "R 改名");
+                this.DrawHintRow("↑↓ 选择", "Enter 前往", "→ 改名", "← 字号");
                 this.DrawHintRow("+ 改绑", "-/Del 删除", "Esc 关闭");
             }
         }
@@ -405,11 +399,10 @@ internal class DestinationListOverlay : MonoBehaviour
         return (int)Math.Round(value * this.UiScale);
     }
 
-    /// <summary>Change the selected UI scale step.</summary>
-    /// <param name="offset">The number of scale steps to move.</param>
-    private void ChangeUiScale(int offset)
+    /// <summary>Move to the next UI scale step.</summary>
+    private void ChangeUiScale()
     {
-        this.UiScaleIndex = (this.UiScaleIndex + offset + UiScaleSteps.Length) % UiScaleSteps.Length;
+        this.UiScaleIndex = (this.UiScaleIndex + 1) % UiScaleSteps.Length;
         this.ResetStyles();
     }
 
