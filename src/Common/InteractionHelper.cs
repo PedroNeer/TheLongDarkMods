@@ -94,6 +94,7 @@ internal class InteractionHelper
             return;
         }
 
+        // Signature from the generated IL2CPP proxy: locID, currentName, buttonPromptLocId1, buttonPromptLocId2, confirmCallback, enableCallback.
         panel.ShowRenamePanel(
             question,
             initialText ?? "",
