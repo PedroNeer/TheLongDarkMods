@@ -96,9 +96,9 @@ internal class InteractionHelper
 
         panel.ShowRenamePanel(
             question,
+            initialText ?? "",
             "Yes",
             "No",
-            initialText ?? "",
             confirmCallback,
             null
         );
