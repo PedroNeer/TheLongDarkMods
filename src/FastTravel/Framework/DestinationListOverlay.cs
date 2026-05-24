@@ -20,7 +20,7 @@ internal class DestinationListOverlay : MonoBehaviour
     private const int MaxVisibleDestinations = 9;
 
     /// <summary>The pixel scaling to apply to the destination list UI.</summary>
-    private const float UiScale = 3f;
+    private static readonly float[] UiScaleSteps = [1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f, 4.5f, 5f];
 
     /// <summary>The maximum length for a custom destination name.</summary>
     private const int MaxCustomNameLength = 80;
@@ -33,6 +33,9 @@ internal class DestinationListOverlay : MonoBehaviour
 
     /// <summary>The current title text.</summary>
     private string Title = "快速旅行目的地";
+
+    /// <summary>The selected UI scale step.</summary>
+    private int UiScaleIndex = 4; // default to 3x for 4K testing
 
     /// <summary>The current return point.</summary>
     private Destination? ReturnPoint;
@@ -88,6 +91,9 @@ internal class DestinationListOverlay : MonoBehaviour
     *********/
     /// <summary>Whether the overlay is currently visible.</summary>
     internal bool IsVisible { get; private set; }
+
+    /// <summary>The selected UI scale.</summary>
+    private float UiScale => UiScaleSteps[this.UiScaleIndex];
 
 
     /*********
@@ -230,12 +236,6 @@ internal class DestinationListOverlay : MonoBehaviour
             return;
         }
 
-        if (input.IsKeyJustPressed(KeyCode.F2) || input.IsKeyJustPressed(KeyCode.R))
-        {
-            this.BeginRename();
-            return;
-        }
-
         int quickIndex = this.GetPressedQuickIndex(input);
         if (quickIndex >= 0 && quickIndex < this.Entries.Count)
         {
@@ -252,26 +252,27 @@ internal class DestinationListOverlay : MonoBehaviour
         if (!this.IsVisible)
             return;
 
+        Event evt = Event.current;
         this.InitializeStyles();
 
-        float margin = Scale(40f);
-        float width = Math.Min(Scale(760f), Screen.width - margin);
-        float height = Math.Min(Scale(440f), Screen.height - margin);
+        float margin = this.Scale(40f);
+        float width = Math.Min(this.Scale(760f), Screen.width - margin);
+        float height = Math.Min(this.Scale(440f), Screen.height - margin);
         float x = (Screen.width - width) / 2f;
         float y = (Screen.height - height) / 2f;
 
         Rect box = new(x, y, width, height);
         GUI.Box(box, GUIContent.none);
 
-        GUILayout.BeginArea(new Rect(x + Scale(18f), y + Scale(14f), width - Scale(36f), height - Scale(28f)));
+        GUILayout.BeginArea(new Rect(x + this.Scale(18f), y + this.Scale(14f), width - this.Scale(36f), height - this.Scale(28f)));
         GUILayout.Label(this.Title, this.TitleStyle);
-        GUILayout.Space(Scale(8f));
+        GUILayout.Space(this.Scale(8f));
 
         string returnPoint = this.ReturnPoint is not null
             ? $"返回点 [{this.FormatHotkey(this.ReturnPointKey)}]：{this.ReturnPoint.GetDisplayName(showRegion: true)}"
             : "返回点：未设置";
         GUILayout.Label(returnPoint, this.HelpStyle);
-        GUILayout.Space(Scale(10f));
+        GUILayout.Space(this.Scale(10f));
 
         if (this.Entries.Count == 0)
         {
@@ -290,16 +291,20 @@ internal class DestinationListOverlay : MonoBehaviour
                 string row = $"{selector} {i + 1}. [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
 
                 GUILayout.Label(row, isSelected ? this.SelectedRowStyle : this.RowStyle);
+                this.HandleRowMouse(evt, GUILayoutUtility.GetLastRect(), i);
             }
         }
 
         GUILayout.FlexibleSpace();
 
+        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)}）";
+        GUILayout.Label(scaleLabel, this.HelpStyle);
+
         if (this.IsRenaming)
         {
             GUILayout.Label("输入新名称（留空使用默认地点名）：", this.HelpStyle);
             GUI.SetNextControlName(RenameFieldName);
-            this.RenameText = GUILayout.TextField(this.RenameText, MaxCustomNameLength, this.TextFieldStyle!, GUILayout.Height(Scale(32f)));
+            this.RenameText = GUILayout.TextField(this.RenameText, MaxCustomNameLength, this.TextFieldStyle!, GUILayout.Height(this.Scale(32f)));
             if (this.ShouldFocusRenameField)
             {
                 GUI.FocusControl(RenameFieldName);
@@ -312,10 +317,12 @@ internal class DestinationListOverlay : MonoBehaviour
         {
             string help = this.IsRebinding
                 ? "按一个已配置的目的地快捷键完成绑定，或按 Esc 取消。"
-                : "上/下选择  Enter旅行  F2/R改名  保存键改绑  删除键删除  Esc关闭";
+                : "上/下选择  Enter旅行  右键改名  左键切换字号  保存键改绑  删除键删除  Esc关闭";
             GUILayout.Label(help, this.HelpStyle);
         }
         GUILayout.EndArea();
+
+        this.HandleOverlayMouse(evt, box);
     }
 
 
@@ -330,14 +337,14 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.TitleStyle = new GUIStyle(GUI.skin.label)
         {
-            fontSize = ScaleFont(20),
+            fontSize = this.ScaleFont(20),
             fontStyle = FontStyle.Bold,
             normal = { textColor = Color.white }
         };
 
         this.RowStyle = new GUIStyle(GUI.skin.label)
         {
-            fontSize = ScaleFont(16),
+            fontSize = this.ScaleFont(16),
             normal = { textColor = new Color(0.82f, 0.82f, 0.78f) }
         };
 
@@ -349,36 +356,63 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.HelpStyle = new GUIStyle(GUI.skin.label)
         {
-            fontSize = ScaleFont(13),
+            fontSize = this.ScaleFont(13),
             normal = { textColor = new Color(0.72f, 0.72f, 0.68f) }
         };
 
         this.TextFieldStyle = new GUIStyle(GUI.skin.textField)
         {
-            fontSize = ScaleFont(16),
-            padding = new RectOffset(ScaleInt(6), ScaleInt(6), ScaleInt(4), ScaleInt(4))
+            fontSize = this.ScaleFont(16),
+            padding = new RectOffset(this.ScaleInt(6), this.ScaleInt(6), this.ScaleInt(4), this.ScaleInt(4))
         };
     }
 
     /// <summary>Scale a pixel size for high-resolution displays.</summary>
     /// <param name="value">The unscaled value.</param>
-    private static float Scale(float value)
+    private float Scale(float value)
     {
-        return value * UiScale;
+        return value * this.UiScale;
     }
 
     /// <summary>Scale a font size for high-resolution displays.</summary>
     /// <param name="value">The unscaled font size.</param>
-    private static int ScaleFont(int value)
+    private int ScaleFont(int value)
     {
-        return ScaleInt(value);
+        return this.ScaleInt(value);
     }
 
     /// <summary>Scale an integer pixel size for high-resolution displays.</summary>
     /// <param name="value">The unscaled value.</param>
-    private static int ScaleInt(int value)
+    private int ScaleInt(int value)
     {
-        return (int)Math.Round(value * UiScale);
+        return (int)Math.Round(value * this.UiScale);
+    }
+
+    /// <summary>Handle a mouse click on the overlay background.</summary>
+    /// <param name="evt">The current GUI event.</param>
+    /// <param name="box">The overlay bounds.</param>
+    private void HandleOverlayMouse(Event evt, Rect box)
+    {
+        if (this.IsRenaming || evt.type != EventType.MouseDown || evt.button != 0 || !box.Contains(evt.mousePosition))
+            return;
+
+        this.UiScaleIndex = (this.UiScaleIndex + 1) % UiScaleSteps.Length;
+        this.TitleStyle = null;
+        evt.Use();
+    }
+
+    /// <summary>Handle a mouse click on a destination row.</summary>
+    /// <param name="evt">The current GUI event.</param>
+    /// <param name="rowRect">The row bounds.</param>
+    /// <param name="rowIndex">The row index.</param>
+    private void HandleRowMouse(Event evt, Rect rowRect, int rowIndex)
+    {
+        if (this.IsRenaming || evt.type != EventType.MouseDown || evt.button != 1 || !rowRect.Contains(evt.mousePosition))
+            return;
+
+        this.SelectedIndex = rowIndex;
+        this.BeginRename();
+        evt.Use();
     }
 
     /// <summary>Start renaming the selected destination.</summary>
