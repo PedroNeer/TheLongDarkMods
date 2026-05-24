@@ -130,8 +130,16 @@ internal class DestinationListOverlay : MonoBehaviour
         if (this.UiScaleIndex < 0)
             this.SetDefaultUiScaleForScreen();
 
+        string? selectedId = this.GetSelectedEntry()?.Id;
         this.Entries.Clear();
         this.Entries.AddRange(entries.Where(entry => entry.Location is not null));
+
+        if (selectedId is not null)
+        {
+            int selectedIndex = this.Entries.FindIndex(entry => entry.Id == selectedId);
+            if (selectedIndex >= 0)
+                this.SelectedIndex = selectedIndex;
+        }
 
         this.SelectedIndex = Math.Min(this.SelectedIndex, Math.Max(this.Entries.Count - 1, 0));
         this.IsRebinding = false;
@@ -284,7 +292,10 @@ internal class DestinationListOverlay : MonoBehaviour
 
         GUILayout.FlexibleSpace();
 
-        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)} / 每页 {visibleRowsPerColumn * VisibleColumnCount} 条）";
+        int maxVisibleDestinations = visibleRowsPerColumn * VisibleColumnCount;
+        int pageIndex = this.Entries.Count > 0 ? this.SelectedIndex / maxVisibleDestinations : 0;
+        int pageCount = Math.Max(1, (int)Math.Ceiling(this.Entries.Count / (float)maxVisibleDestinations));
+        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)} / 第 {pageIndex + 1}/{pageCount} 页 / 每页最多 {maxVisibleDestinations} 条）";
         GUILayout.Label(scaleLabel, this.HelpStyle);
 
         if (this.IsRebinding)
@@ -342,11 +353,14 @@ internal class DestinationListOverlay : MonoBehaviour
     private void DrawDestinationColumns(float availableWidth, int visibleRowsPerColumn)
     {
         int startIndex = this.GetFirstVisibleIndex(visibleRowsPerColumn);
+        int entriesOnPage = Math.Min(visibleRowsPerColumn * VisibleColumnCount, this.Entries.Count - startIndex);
+        int visibleColumnCount = Math.Max(1, Math.Min(VisibleColumnCount, (int)Math.Ceiling(entriesOnPage / (float)visibleRowsPerColumn)));
         float columnGap = this.Scale(24f);
         float columnWidth = Math.Max(240f, (availableWidth - (columnGap * (VisibleColumnCount - 1))) / VisibleColumnCount);
 
         GUILayout.BeginHorizontal();
-        for (int column = 0; column < VisibleColumnCount; column++)
+        GUILayout.FlexibleSpace();
+        for (int column = 0; column < visibleColumnCount; column++)
         {
             if (column > 0)
                 GUILayout.Space(columnGap);
@@ -369,6 +383,7 @@ internal class DestinationListOverlay : MonoBehaviour
             GUILayout.EndVertical();
         }
 
+        GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
     }
 
