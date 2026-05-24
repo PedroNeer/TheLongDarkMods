@@ -363,6 +363,33 @@ public class ModEntry : MelonMod
         this.UpdateDestinationListIfVisible(data);
     }
 
+    /// <summary>Rename a destination entry.</summary>
+    /// <param name="entry">The destination entry.</param>
+    /// <param name="customName">The new custom name, or <c>null</c> to reset it.</param>
+    private void RenameDestination(DestinationEntry entry, string? customName)
+    {
+        if (!this.Config.CanEditDestinations)
+        {
+            this.Log.Warning("无法编辑快速旅行目的地（已在模组设置中禁用）。");
+            return;
+        }
+
+        SaveModel data = this.DestinationManager.GetData();
+        DestinationEntry? savedEntry = data.Get(entry.Id);
+        if (savedEntry is null)
+        {
+            this.InteractionHelper.ShowMessageBox("这个快速旅行目的地已经不存在。");
+            return;
+        }
+
+        savedEntry.CustomName = string.IsNullOrWhiteSpace(customName)
+            ? null
+            : customName.Trim();
+
+        this.DestinationManager.SaveData(data);
+        this.UpdateDestinationListIfVisible(data);
+    }
+
     /// <summary>Handle the player requesting to fast travel to their last return point.</summary>
     private void InteractivelyReturn()
     {
@@ -514,7 +541,8 @@ public class ModEntry : MelonMod
             this.Config.ReturnPointKey,
             onSelect ?? this.InteractivelyFastTravel,
             this.InteractivelyDelete,
-            this.RebindDestination
+            this.RebindDestination,
+            this.RenameDestination
         );
     }
 
