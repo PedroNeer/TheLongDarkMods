@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 
 namespace Pathoschild.TheLongDarkMods.FastTravel.Framework.DataModels;
 
@@ -16,33 +18,49 @@ internal class SaveModel
     public Destination? ReturnPoint { get; set; }
 
     /// <summary>The saved destinations.</summary>
-    public Dictionary<int, Destination> Destinations { get; set; } = [];
+    public List<DestinationEntry> Destinations { get; set; } = [];
 
 
     /*********
     ** Public methods
     *********/
-    /// <summary>Get a saved destination, if it exists.</summary>
-    /// <param name="index">The slot index.</param>
-    public Destination? Get(int index)
+    /// <summary>Get a saved destination entry by ID, if it exists.</summary>
+    /// <param name="id">The destination entry ID.</param>
+    public DestinationEntry? Get(string id)
     {
-        if (index < 0)
-            throw new ArgumentOutOfRangeException(nameof(index), $"Invalid fast travel slot index {index}.");
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("The destination entry ID can't be empty.", nameof(id));
 
-        return this.Destinations.GetValueOrDefault(index);
+        return this.Destinations.FirstOrDefault(entry => entry.Id == id);
     }
 
-    /// <summary>Save a destination to a slot.</summary>
-    /// <param name="index">The slot index.</param>
-    /// <param name="destination">The destination to set, or <c>null</c> to delete it.</param>
-    public void Set(int index, Destination? destination)
+    /// <summary>Get the saved destination entries bound to a hotkey.</summary>
+    /// <param name="hotkey">The hotkey to match.</param>
+    public IEnumerable<DestinationEntry> GetByHotkey(KeyCode hotkey)
     {
-        if (index < 0)
-            throw new ArgumentOutOfRangeException(nameof(index), $"Invalid fast travel slot index {index}.");
+        if (hotkey == KeyCode.None)
+            return [];
 
-        if (destination is null)
-            this.Destinations.Remove(index);
-        else
-            this.Destinations[index] = destination;
+        return this.Destinations.Where(entry => entry.Hotkey == hotkey);
+    }
+
+    /// <summary>Add a new saved destination entry.</summary>
+    /// <param name="entry">The destination entry to add.</param>
+    public void Add(DestinationEntry entry)
+    {
+        if (entry.Location is null)
+            throw new ArgumentException("The destination entry must have a location.", nameof(entry));
+
+        if (string.IsNullOrWhiteSpace(entry.Id))
+            entry.Id = Guid.NewGuid().ToString("N");
+
+        this.Destinations.Add(entry);
+    }
+
+    /// <summary>Remove a saved destination entry.</summary>
+    /// <param name="entry">The destination entry to remove.</param>
+    public void Remove(DestinationEntry entry)
+    {
+        this.Destinations.RemoveAll(saved => saved.Id == entry.Id);
     }
 }

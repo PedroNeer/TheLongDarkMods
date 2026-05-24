@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Il2Cpp;
 using MelonLoader;
@@ -16,9 +17,6 @@ public class ModEntry : MelonMod
     /*********
     ** Fields
     *********/
-    /// <summary>The maximum number of destinations which the player can save.</summary>
-    private const int MaxDestinations = 9;
-
     /// <summary>The mod settings.</summary>
     private readonly ModConfig Config = new();
 
@@ -52,7 +50,7 @@ public class ModEntry : MelonMod
     public override void OnInitializeMelon()
     {
         this.Log = Melon<ModEntry>.Logger;
-        this.DestinationManager = new DestinationManager(this.Log);
+        this.DestinationManager = new DestinationManager(this.Log, this.Config);
         this.InteractionHelper = new InteractionHelper(this.Log);
         this.DestinationListOverlay = DestinationListOverlay.Create();
         this.FastTravelRestrictions = new FastTravelRestrictionHelper(this.Config);
@@ -72,14 +70,19 @@ public class ModEntry : MelonMod
         // handle key presses
         if (InputManager.HasPressedKey() && SceneHelper.IsSaveLoaded())
         {
-            // toggle overlay
-            if (this.InteractionHelper.IsKeyJustPressed(this.Config.ShowListKey))
+            if (this.DestinationListOverlay.IsVisible)
             {
-                if (this.DestinationListOverlay.IsVisible)
+                if (this.InteractionHelper.IsKeyJustPressed(this.Config.ShowListKey))
                     this.DestinationListOverlay.Hide();
                 else
-                    this.ShowDestinationList(this.DestinationManager.GetData());
+                    this.DestinationListOverlay.HandleInput(this.InteractionHelper, this.Config);
+
+                return;
             }
+
+            // toggle overlay
+            if (this.InteractionHelper.IsKeyJustPressed(this.Config.ShowListKey))
+                this.ShowDestinationList(this.DestinationManager.GetData());
 
             // return warp
             else if (this.InteractionHelper.IsKeyJustPressed(this.Config.ReturnPointKey))
@@ -88,20 +91,18 @@ public class ModEntry : MelonMod
             // saved destination
             else
             {
-                for (int i = 0; i < MaxDestinations; i++)
+                foreach (KeyCode key in this.Config.GetDestinationKeys().Distinct())
                 {
-                    // skip if not pressed
-                    KeyCode key = this.GetKeyForSlot(i);
-                    if (!this.InteractionHelper.IsKeyJustPressed(key))
+                    if (key == KeyCode.None || !this.InteractionHelper.IsKeyJustPressed(key))
                         continue;
 
                     // apply
                     if (this.InteractionHelper.IsKeyDown(this.Config.SaveModifierKey))
-                        this.InteractivelySave(i);
+                        this.InteractivelySave(key);
                     else if (this.InteractionHelper.IsKeyDown(this.Config.DeleteModifierKey))
-                        this.InteractivelyDelete(i);
+                        this.InteractivelyDelete(key);
                     else
-                        this.InteractivelyFastTravel(i);
+                        this.InteractivelyFastTravel(key);
                     break;
                 }
             }
@@ -165,9 +166,9 @@ public class ModEntry : MelonMod
     /*********
     ** Private methods
     *********/
-    /// <summary>Delete a destination with player interaction.</summary>
-    /// <param name="slotIndex">The destination index.</param>
-    private void InteractivelyDelete(int slotIndex)
+    /// <summary>Delete destinations bound to a hotkey with player interaction.</summary>
+    /// <param name="hotkey">The destination hotkey.</param>
+    private void InteractivelyDelete(KeyCode hotkey)
     {
         if (!this.Config.CanEditDestinations)
         {
@@ -176,25 +177,45 @@ public class ModEntry : MelonMod
         }
 
         SaveModel data = this.DestinationManager.GetData();
-        Destination? slot = data.Get(slotIndex);
+        DestinationEntry[] matches = data.GetByHotkey(hotkey).ToArray();
 
-        if (slot is null)
+        if (matches.Length == 0)
             return; // nothing to delete
 
+        if (matches.Length == 1)
+            this.InteractivelyDelete(matches[0]);
+        else
+            this.ShowDestinationList(data, matches, $"Forget which destination bound to {hotkey}?", this.InteractivelyDelete);
+    }
+
+    /// <summary>Delete a destination with player interaction.</summary>
+    /// <param name="entry">The destination entry.</param>
+    private void InteractivelyDelete(DestinationEntry entry)
+    {
+        if (!this.Config.CanEditDestinations)
+        {
+            this.Log.Warning("Can't edit fast travel destinations (per your mod settings).");
+            return;
+        }
+
         this.InteractionHelper.ShowConfirmDialogue(
-            $"Do you want to forget fast travel point {slotIndex + 1} ({slot.GetDisplayName()})?",
+            $"Do you want to forget {entry.GetDisplayName()}?",
             () =>
             {
-                data.Set(slotIndex, null);
+                SaveModel data = this.DestinationManager.GetData();
+                DestinationEntry? saved = data.Get(entry.Id);
+                if (saved is not null)
+                    data.Remove(saved);
+
                 this.DestinationManager.SaveData(data);
                 this.UpdateDestinationListIfVisible(data);
             }
         );
     }
 
-    /// <summary>Save a destination with player interaction.</summary>
-    /// <param name="slotIndex">The destination index.</param>
-    private void InteractivelySave(int slotIndex)
+    /// <summary>Save a new destination with player interaction.</summary>
+    /// <param name="hotkey">The destination hotkey to bind.</param>
+    private void InteractivelySave(KeyCode hotkey)
     {
         // check restriction
         if (!this.Config.CanEditDestinations)
@@ -206,53 +227,71 @@ public class ModEntry : MelonMod
         // apply
         SaveModel data = this.DestinationManager.GetData();
         Destination here = this.DestinationManager.GetCurrentLocation();
-        Destination? slot = data.Get(slotIndex);
+        int existingBindings = data.GetByHotkey(hotkey).Count();
 
-        string question = $"Save {here.GetDisplayName()} as fast travel point {slotIndex + 1}?";
-        if (slot != null)
-        {
-            string prevLabel = slot.Scene.Name == here.Scene.Name
-                ? "in this location"
-                : $"({slot.GetDisplayName()})";
-
-            question += $"\n\nThis will replace your previous saved point {prevLabel}.";
-        }
+        string question = $"Save {here.GetDisplayName()} as a new fast travel destination bound to {hotkey}?";
+        if (existingBindings > 0)
+            question += $"\n\nThis key already has {existingBindings} saved destination{(existingBindings == 1 ? "" : "s")}. The old destination{(existingBindings == 1 ? "" : "s")} will stay in your list.";
 
         this.InteractionHelper.ShowConfirmDialogue(
             question,
             () =>
             {
-                data.Set(slotIndex, here);
+                data.Add(new DestinationEntry
+                {
+                    Hotkey = hotkey,
+                    Location = here
+                });
                 this.DestinationManager.SaveData(data);
                 this.UpdateDestinationListIfVisible(data);
             }
         );
     }
 
-    /// <summary>Fast travel to a saved destination with player interaction.</summary>
-    /// <param name="slotIndex">The destination index.</param>
-    private void InteractivelyFastTravel(int slotIndex)
+    /// <summary>Fast travel to destinations bound to a hotkey with player interaction.</summary>
+    /// <param name="hotkey">The destination hotkey.</param>
+    private void InteractivelyFastTravel(KeyCode hotkey)
     {
         SaveModel data = this.DestinationManager.GetData();
+        DestinationEntry[] matches = data.GetByHotkey(hotkey).ToArray();
+
+        if (matches.Length == 0)
+        {
+            string message = $"You haven't saved any fast travel destinations bound to {hotkey} yet.";
+            if (this.Config.ShowUsageHints)
+                message += $"\n\nPress {this.Config.SaveModifierKey} + {hotkey} to save your current location with that key.";
+
+            this.InteractionHelper.ShowMessageBox(message);
+            return;
+        }
+
+        if (matches.Length == 1)
+            this.InteractivelyFastTravel(matches[0]);
+        else
+            this.ShowDestinationList(data, matches, $"Travel to which destination bound to {hotkey}?", this.InteractivelyFastTravel);
+    }
+
+    /// <summary>Fast travel to a saved destination with player interaction.</summary>
+    /// <param name="entry">The destination entry.</param>
+    private void InteractivelyFastTravel(DestinationEntry entry)
+    {
+        SaveModel data = this.DestinationManager.GetData();
+        DestinationEntry? savedEntry = data.Get(entry.Id);
+        Destination? destination = savedEntry?.Location;
         Destination here = this.DestinationManager.GetCurrentLocation();
-        Destination? destination = data.Get(slotIndex);
         Destination? returnPoint = data.ReturnPoint;
+
+        // not set yet
+        if (destination is null)
+        {
+            this.InteractionHelper.ShowMessageBox("That fast travel destination no longer exists.");
+            return;
+        }
 
         // check restrictions
         if (!this.FastTravelRestrictions.IsAllowed(here, destination, data, out string? reasonPhrase))
         {
             this.Log.Warning($"Can't fast travel {reasonPhrase} (per your mod settings).");
-            return;
-        }
-
-        // not set yet
-        if (destination is null)
-        {
-            string message = $"You haven't saved anywhere as fast travel point {slotIndex + 1} yet.";
-            if (this.Config.ShowUsageHints)
-                message += $"\n\nPress {this.Config.SaveModifierKey} + {this.GetKeyForSlot(slotIndex)} to save your current location to it.";
-
-            this.InteractionHelper.ShowMessageBox(message);
             return;
         }
 
@@ -276,6 +315,27 @@ public class ModEntry : MelonMod
                 this.FastTravelTo(destination);
             }
         );
+    }
+
+    /// <summary>Rebind a destination entry to a new hotkey.</summary>
+    /// <param name="entry">The destination entry.</param>
+    /// <param name="hotkey">The new hotkey.</param>
+    private void RebindDestination(DestinationEntry entry, KeyCode hotkey)
+    {
+        if (!this.Config.CanEditDestinations)
+        {
+            this.Log.Warning("Can't edit fast travel destinations (per your mod settings).");
+            return;
+        }
+
+        SaveModel data = this.DestinationManager.GetData();
+        DestinationEntry? savedEntry = data.Get(entry.Id);
+        if (savedEntry is null)
+            return;
+
+        savedEntry.Hotkey = hotkey;
+        this.DestinationManager.SaveData(data);
+        this.UpdateDestinationListIfVisible(data);
     }
 
     /// <summary>Handle the player requesting to fast travel to their last return point.</summary>
@@ -417,29 +477,20 @@ public class ModEntry : MelonMod
 
     /// <summary>Show or reset the destination list overlay.</summary>
     /// <param name="data">The data to show.</param>
-    private void ShowDestinationList(SaveModel data)
+    /// <param name="entries">The entries to show, or <c>null</c> to show every destination.</param>
+    /// <param name="title">The overlay title.</param>
+    /// <param name="onSelect">The action to run when the player selects a destination.</param>
+    private void ShowDestinationList(SaveModel data, IEnumerable<DestinationEntry>? entries = null, string? title = null, Action<DestinationEntry>? onSelect = null)
     {
-        string[] destinationLines = data.Destinations
-            .OrderBy(p => p.Key)
-            .Select(p => $"[{this.GetKeyForSlot(p.Key)}] {p.Value.GetDisplayName(showRegion: true)}")
-            .ToArray();
-
-        string summary =
-            $"""
-            Return point:
-               {(data.ReturnPoint is not null
-                   ? $"[{this.Config.ReturnPointKey}] {data.ReturnPoint.GetDisplayName(showRegion: true)}"
-                   : "None set."
-               )}
-
-            Saved destinations:
-               {(destinationLines.Length > 0
-                   ? string.Join("\n   ", destinationLines)
-                   : "None set."
-               )}
-            """;
-
-        this.DestinationListOverlay.Show(summary);
+        this.DestinationListOverlay.Show(
+            title ?? "Fast travel destinations",
+            entries ?? data.Destinations,
+            data.ReturnPoint,
+            this.Config.ReturnPointKey,
+            onSelect ?? this.InteractivelyFastTravel,
+            this.InteractivelyDelete,
+            this.RebindDestination
+        );
     }
 
     /// <summary>Update the destination list if it's currently being shown.</summary>
@@ -448,25 +499,6 @@ public class ModEntry : MelonMod
     {
         if (this.DestinationListOverlay.IsVisible)
             this.ShowDestinationList(data);
-    }
-
-    /// <summary>Get the key bound to a given fast travel slot.</summary>
-    /// <param name="slotIndex">The fast travel slot index.</param>
-    private KeyCode GetKeyForSlot(int slotIndex)
-    {
-        return slotIndex switch
-        {
-            0 => this.Config.Destination1,
-            1 => this.Config.Destination2,
-            2 => this.Config.Destination3,
-            3 => this.Config.Destination4,
-            4 => this.Config.Destination5,
-            5 => this.Config.Destination6,
-            6 => this.Config.Destination7,
-            7 => this.Config.Destination8,
-            8 => this.Config.Destination9,
-            _ => throw new InvalidOperationException($"Unsupported destination slot {slotIndex}.")
-        };
     }
 
     /// <summary>Get a debug log representation of a scene transition.</summary>
