@@ -16,17 +16,26 @@ internal class DestinationListOverlay : MonoBehaviour
     /*********
     ** Fields
     *********/
-    /// <summary>The number of destination rows shown in each column.</summary>
-    private const int VisibleRowsPerColumn = 9;
+    /// <summary>The preferred number of destination rows shown in each column.</summary>
+    private const int PreferredVisibleRowsPerColumn = 9;
 
     /// <summary>The number of destination columns shown at once.</summary>
     private const int VisibleColumnCount = 2;
 
-    /// <summary>The maximum number of destination rows shown at once.</summary>
-    private const int MaxVisibleDestinations = VisibleRowsPerColumn * VisibleColumnCount;
-
     /// <summary>The pixel scaling to apply to the destination list UI.</summary>
     private static readonly float[] UiScaleSteps = [1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f, 4.5f, 5f];
+
+    /// <summary>The preferred default UI scale on screens where it can fit the full list page.</summary>
+    private const float PreferredDefaultUiScale = 3.5f;
+
+    /// <summary>The unscaled vertical padding inside the outer list box.</summary>
+    private const float ContentVerticalPadding = 28f;
+
+    /// <summary>The estimated unscaled vertical space used by non-list labels, gaps, and shortcut hints.</summary>
+    private const float NonListContentHeight = 105f;
+
+    /// <summary>The estimated unscaled height of one destination row.</summary>
+    private const float DestinationRowHeight = 19f;
 
     /// <summary>The entries shown in the list.</summary>
     private readonly List<DestinationEntry> Entries = [];
@@ -35,7 +44,7 @@ internal class DestinationListOverlay : MonoBehaviour
     private string Title = "快速旅行目的地";
 
     /// <summary>The selected UI scale step.</summary>
-    private int UiScaleIndex = 5; // default to 3.5x for 4K testing
+    private int UiScaleIndex = -1;
 
     /// <summary>The current return point.</summary>
     private Destination? ReturnPoint;
@@ -81,7 +90,7 @@ internal class DestinationListOverlay : MonoBehaviour
     internal bool IsVisible { get; private set; }
 
     /// <summary>The selected UI scale.</summary>
-    private float UiScale => UiScaleSteps[this.UiScaleIndex];
+    private float UiScale => UiScaleSteps[Math.Max(this.UiScaleIndex, 0)];
 
 
     /*********
@@ -117,6 +126,9 @@ internal class DestinationListOverlay : MonoBehaviour
         this.OnDelete = onDelete;
         this.OnRebind = onRebind;
         this.OnRename = onRename;
+
+        if (this.UiScaleIndex < 0)
+            this.SetDefaultUiScaleForScreen();
 
         this.Entries.Clear();
         this.Entries.AddRange(entries.Where(entry => entry.Location is not null));
@@ -241,9 +253,10 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.InitializeStyles();
 
-        float margin = Math.Max(40f, Math.Min(160f, Screen.width * 0.04f));
+        float margin = this.GetScreenMargin();
         float width = Math.Min(Math.Max(980f, Screen.width * 0.86f), Screen.width - margin);
-        float height = Math.Min(Math.Max(620f, Screen.height * 0.76f), Screen.height - margin);
+        float height = this.GetOverlayHeight();
+        int visibleRowsPerColumn = this.GetVisibleRowsPerColumn(height);
         float x = (Screen.width - width) / 2f;
         float y = (Screen.height - height) / 2f;
 
@@ -266,12 +279,12 @@ internal class DestinationListOverlay : MonoBehaviour
         }
         else
         {
-            this.DrawDestinationColumns(width - this.Scale(36f));
+            this.DrawDestinationColumns(width - this.Scale(36f), visibleRowsPerColumn);
         }
 
         GUILayout.FlexibleSpace();
 
-        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)}）";
+        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)} / 每页 {visibleRowsPerColumn * VisibleColumnCount} 条）";
         GUILayout.Label(scaleLabel, this.HelpStyle);
 
         if (this.IsRebinding)
@@ -325,9 +338,10 @@ internal class DestinationListOverlay : MonoBehaviour
 
     /// <summary>Draw saved destinations in two page-filled columns.</summary>
     /// <param name="availableWidth">The width available for the columns.</param>
-    private void DrawDestinationColumns(float availableWidth)
+    /// <param name="visibleRowsPerColumn">The number of rows to show in each column.</param>
+    private void DrawDestinationColumns(float availableWidth, int visibleRowsPerColumn)
     {
-        int startIndex = this.GetFirstVisibleIndex();
+        int startIndex = this.GetFirstVisibleIndex(visibleRowsPerColumn);
         float columnGap = this.Scale(24f);
         float columnWidth = Math.Max(240f, (availableWidth - (columnGap * (VisibleColumnCount - 1))) / VisibleColumnCount);
 
@@ -338,9 +352,9 @@ internal class DestinationListOverlay : MonoBehaviour
                 GUILayout.Space(columnGap);
 
             GUILayout.BeginVertical(GUILayout.Width(columnWidth));
-            for (int rowIndex = 0; rowIndex < VisibleRowsPerColumn; rowIndex++)
+            for (int rowIndex = 0; rowIndex < visibleRowsPerColumn; rowIndex++)
             {
-                int entryIndex = startIndex + (column * VisibleRowsPerColumn) + rowIndex;
+                int entryIndex = startIndex + (column * visibleRowsPerColumn) + rowIndex;
                 if (entryIndex >= this.Entries.Count)
                     break;
 
@@ -386,6 +400,67 @@ internal class DestinationListOverlay : MonoBehaviour
         this.ResetStyles();
     }
 
+    /// <summary>Set the largest default UI scale which still fits the preferred page size on the current screen.</summary>
+    private void SetDefaultUiScaleForScreen()
+    {
+        int preferredIndex = this.GetUiScaleIndex(PreferredDefaultUiScale);
+        for (int i = preferredIndex; i >= 0; i--)
+        {
+            if (this.GetVisibleRowsPerColumn(this.GetOverlayHeight(), UiScaleSteps[i]) >= PreferredVisibleRowsPerColumn)
+            {
+                this.UiScaleIndex = i;
+                this.ResetStyles();
+                return;
+            }
+        }
+
+        this.UiScaleIndex = 0;
+        this.ResetStyles();
+    }
+
+    /// <summary>Get the index for a UI scale value.</summary>
+    /// <param name="scale">The scale to find.</param>
+    private int GetUiScaleIndex(float scale)
+    {
+        for (int i = 0; i < UiScaleSteps.Length; i++)
+        {
+            if (Math.Abs(UiScaleSteps[i] - scale) < 0.01f)
+                return i;
+        }
+
+        return UiScaleSteps.Length - 1;
+    }
+
+    /// <summary>Get the screen margin used by the outer list box.</summary>
+    private float GetScreenMargin()
+    {
+        return Math.Max(40f, Math.Min(160f, Screen.width * 0.04f));
+    }
+
+    /// <summary>Get the outer list box height for the current screen.</summary>
+    private float GetOverlayHeight()
+    {
+        return Math.Min(Math.Max(620f, Screen.height * 0.76f), Screen.height - this.GetScreenMargin());
+    }
+
+    /// <summary>Get the rows that can fit in each destination column at the current scale.</summary>
+    /// <param name="boxHeight">The outer list box height.</param>
+    private int GetVisibleRowsPerColumn(float boxHeight)
+    {
+        return this.GetVisibleRowsPerColumn(boxHeight, this.UiScale);
+    }
+
+    /// <summary>Get the rows that can fit in each destination column at a given scale.</summary>
+    /// <param name="boxHeight">The outer list box height.</param>
+    /// <param name="uiScale">The UI scale to test.</param>
+    private int GetVisibleRowsPerColumn(float boxHeight, float uiScale)
+    {
+        float contentHeight = boxHeight - (ContentVerticalPadding * uiScale);
+        float listHeight = contentHeight - (NonListContentHeight * uiScale);
+        int rows = (int)Math.Floor(listHeight / (DestinationRowHeight * uiScale));
+        return Math.Max(1, Math.Min(PreferredVisibleRowsPerColumn, rows));
+    }
+
     /// <summary>Reset cached GUI styles so they're recreated with the current scale.</summary>
     private void ResetStyles()
     {
@@ -427,12 +502,14 @@ internal class DestinationListOverlay : MonoBehaviour
     }
 
     /// <summary>Get the first entry index visible in the list.</summary>
-    private int GetFirstVisibleIndex()
+    /// <param name="visibleRowsPerColumn">The number of rows shown in each column.</param>
+    private int GetFirstVisibleIndex(int visibleRowsPerColumn)
     {
-        if (this.Entries.Count <= MaxVisibleDestinations)
+        int maxVisibleDestinations = visibleRowsPerColumn * VisibleColumnCount;
+        if (this.Entries.Count <= maxVisibleDestinations)
             return 0;
 
-        return (this.SelectedIndex / MaxVisibleDestinations) * MaxVisibleDestinations;
+        return (this.SelectedIndex / maxVisibleDestinations) * maxVisibleDestinations;
     }
 
     /// <summary>Get the quick-select index pressed by the player.</summary>
