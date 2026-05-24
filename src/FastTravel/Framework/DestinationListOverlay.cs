@@ -19,6 +19,12 @@ internal class DestinationListOverlay : MonoBehaviour
     /// <summary>The maximum number of destination rows shown at once.</summary>
     private const int MaxVisibleDestinations = 9;
 
+    /// <summary>The maximum length for a custom destination name.</summary>
+    private const int MaxCustomNameLength = 80;
+
+    /// <summary>The GUI control name for the rename text field.</summary>
+    private const string RenameFieldName = "FastTravelRenameField";
+
     /// <summary>The entries shown in the list.</summary>
     private readonly List<DestinationEntry> Entries = [];
 
@@ -37,6 +43,15 @@ internal class DestinationListOverlay : MonoBehaviour
     /// <summary>Whether the next destination hotkey should rebind the selected entry.</summary>
     private bool IsRebinding;
 
+    /// <summary>Whether the selected entry is being renamed.</summary>
+    private bool IsRenaming;
+
+    /// <summary>The custom name currently being edited.</summary>
+    private string RenameText = "";
+
+    /// <summary>Whether the rename text field should be focused on the next draw.</summary>
+    private bool ShouldFocusRenameField;
+
     /// <summary>The callback to invoke when an entry is selected.</summary>
     private Action<DestinationEntry>? OnSelect;
 
@@ -45,6 +60,9 @@ internal class DestinationListOverlay : MonoBehaviour
 
     /// <summary>The callback to invoke when an entry should be rebound to a new hotkey.</summary>
     private Action<DestinationEntry, KeyCode>? OnRebind;
+
+    /// <summary>The callback to invoke when an entry should be renamed.</summary>
+    private Action<DestinationEntry, string?>? OnRename;
 
     /// <summary>The title label style.</summary>
     private GUIStyle? TitleStyle;
@@ -57,6 +75,9 @@ internal class DestinationListOverlay : MonoBehaviour
 
     /// <summary>The help label style.</summary>
     private GUIStyle? HelpStyle;
+
+    /// <summary>The text field style.</summary>
+    private GUIStyle? TextFieldStyle;
 
 
     /*********
@@ -89,7 +110,8 @@ internal class DestinationListOverlay : MonoBehaviour
     /// <param name="onSelect">The callback to invoke when an entry is selected.</param>
     /// <param name="onDelete">The callback to invoke when an entry should be deleted.</param>
     /// <param name="onRebind">The callback to invoke when an entry should be rebound to a new hotkey.</param>
-    internal void Show(string title, IEnumerable<DestinationEntry> entries, Destination? returnPoint, KeyCode returnPointKey, Action<DestinationEntry> onSelect, Action<DestinationEntry> onDelete, Action<DestinationEntry, KeyCode> onRebind)
+    /// <param name="onRename">The callback to invoke when an entry should be renamed.</param>
+    internal void Show(string title, IEnumerable<DestinationEntry> entries, Destination? returnPoint, KeyCode returnPointKey, Action<DestinationEntry> onSelect, Action<DestinationEntry> onDelete, Action<DestinationEntry, KeyCode> onRebind, Action<DestinationEntry, string?> onRename)
     {
         this.Title = title;
         this.ReturnPoint = returnPoint;
@@ -97,12 +119,14 @@ internal class DestinationListOverlay : MonoBehaviour
         this.OnSelect = onSelect;
         this.OnDelete = onDelete;
         this.OnRebind = onRebind;
+        this.OnRename = onRename;
 
         this.Entries.Clear();
         this.Entries.AddRange(entries.Where(entry => entry.Location is not null));
 
         this.SelectedIndex = Math.Min(this.SelectedIndex, Math.Max(this.Entries.Count - 1, 0));
         this.IsRebinding = false;
+        this.IsRenaming = false;
         this.IsVisible = true;
     }
 
@@ -111,6 +135,7 @@ internal class DestinationListOverlay : MonoBehaviour
     {
         this.IsVisible = false;
         this.IsRebinding = false;
+        this.IsRenaming = false;
     }
 
     /// <summary>Handle a key press while the overlay is open.</summary>
@@ -120,6 +145,23 @@ internal class DestinationListOverlay : MonoBehaviour
     {
         if (!this.IsVisible)
             return;
+
+        if (this.IsRenaming)
+        {
+            if (input.IsKeyJustPressed(KeyCode.Escape))
+            {
+                this.IsRenaming = false;
+                return;
+            }
+
+            if (input.IsKeyJustPressed(KeyCode.Return) || input.IsKeyJustPressed(KeyCode.KeypadEnter))
+            {
+                this.CommitRename();
+                return;
+            }
+
+            return;
+        }
 
         if (input.IsKeyJustPressed(KeyCode.Escape))
         {
@@ -185,6 +227,12 @@ internal class DestinationListOverlay : MonoBehaviour
             return;
         }
 
+        if (input.IsKeyJustPressed(KeyCode.F2) || input.IsKeyJustPressed(KeyCode.R))
+        {
+            this.BeginRename();
+            return;
+        }
+
         int quickIndex = this.GetPressedQuickIndex(input);
         if (quickIndex >= 0 && quickIndex < this.Entries.Count)
         {
@@ -243,10 +291,26 @@ internal class DestinationListOverlay : MonoBehaviour
 
         GUILayout.FlexibleSpace();
 
-        string help = this.IsRebinding
-            ? "按一个已配置的目的地快捷键完成绑定，或按 Esc 取消。"
-            : "上/下选择  Enter旅行  保存键改绑  删除键删除  Esc关闭";
-        GUILayout.Label(help, this.HelpStyle);
+        if (this.IsRenaming)
+        {
+            GUILayout.Label("输入新名称（留空使用默认地点名）：", this.HelpStyle);
+            GUI.SetNextControlName(RenameFieldName);
+            this.RenameText = GUILayout.TextField(this.RenameText, MaxCustomNameLength, this.TextFieldStyle!);
+            if (this.ShouldFocusRenameField)
+            {
+                GUI.FocusControl(RenameFieldName);
+                this.ShouldFocusRenameField = false;
+            }
+
+            GUILayout.Label("Enter保存  Esc取消", this.HelpStyle);
+        }
+        else
+        {
+            string help = this.IsRebinding
+                ? "按一个已配置的目的地快捷键完成绑定，或按 Esc 取消。"
+                : "上/下选择  Enter旅行  F2/R改名  保存键改绑  删除键删除  Esc关闭";
+            GUILayout.Label(help, this.HelpStyle);
+        }
         GUILayout.EndArea();
     }
 
@@ -284,6 +348,34 @@ internal class DestinationListOverlay : MonoBehaviour
             fontSize = 13,
             normal = { textColor = new Color(0.72f, 0.72f, 0.68f) }
         };
+
+        this.TextFieldStyle = new GUIStyle(GUI.skin.textField)
+        {
+            fontSize = 16
+        };
+    }
+
+    /// <summary>Start renaming the selected destination.</summary>
+    private void BeginRename()
+    {
+        DestinationEntry? selected = this.GetSelectedEntry();
+        if (selected is null)
+            return;
+
+        this.IsRenaming = true;
+        this.RenameText = selected.CustomName ?? "";
+        this.ShouldFocusRenameField = true;
+    }
+
+    /// <summary>Save the current rename text.</summary>
+    private void CommitRename()
+    {
+        DestinationEntry? selected = this.GetSelectedEntry();
+        if (selected is null)
+            return;
+
+        this.IsRenaming = false;
+        this.OnRename?.Invoke(selected, this.RenameText);
     }
 
     /// <summary>Get the selected destination entry.</summary>

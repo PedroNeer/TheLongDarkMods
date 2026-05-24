@@ -38,6 +38,8 @@ To use fast travel (with the default options):
   shortcut.
 - Delete a saved fast travel destination by pressing `[numpad -]` + destination key, or delete the
   selected destination from the destination list.
+- Rename a destination by opening the destination list, selecting it, and pressing `[F2]` or `[R]`.
+  Leave the name empty to use the default location name.
 - Rebind a destination by opening the destination list, selecting it, pressing `[numpad +]`, then
   pressing the new destination key.
 - Return to where you were before your _most recent_ fast travel by pressing `[numpad 0]`.
