@@ -46,7 +46,9 @@ internal class DestinationManager
     public SaveModel GetData()
     {
         ModDataManager dataManager = this.CreateDataManager();
-        SaveModel? data = this.DeserializeRaw(dataManager.Load());
+        SaveModel? data = this.DeserializeRaw(dataManager.Load(), out bool shouldSave);
+        if (data is not null && shouldSave)
+            this.SaveData(data);
 
         return data ?? new SaveModel();
     }
@@ -90,8 +92,11 @@ internal class DestinationManager
 
     /// <summary>Deserialize raw data into the data model, if it's valid.</summary>
     /// <param name="rawData">The raw data to deserialize.</param>
-    private SaveModel? DeserializeRaw(string? rawData)
+    /// <param name="shouldSave">Whether the returned data should be persisted back to disk.</param>
+    private SaveModel? DeserializeRaw(string? rawData, out bool shouldSave)
     {
+        shouldSave = false;
+
         if (rawData is not null)
         {
             try
@@ -99,7 +104,7 @@ internal class DestinationManager
                 SaveModel? data = JsonSerializer.Deserialize<SaveModel>(rawData, this.JsonOptions);
                 if (data?.Destinations != null)
                 {
-                    this.Normalize(data);
+                    shouldSave = this.Normalize(data);
                     return data;
                 }
             }
@@ -109,7 +114,10 @@ internal class DestinationManager
                 {
                     LegacySaveModel? data = JsonSerializer.Deserialize<LegacySaveModel>(rawData, this.JsonOptions);
                     if (data?.Destinations != null)
+                    {
+                        shouldSave = true;
                         return this.MigrateLegacy(data);
+                    }
                 }
                 catch (JsonException ex)
                 {
@@ -130,14 +138,18 @@ internal class DestinationManager
 
     /// <summary>Normalize the save model after loading it from disk.</summary>
     /// <param name="data">The data to normalize.</param>
-    private void Normalize(SaveModel data)
+    /// <returns>Returns whether the data was changed.</returns>
+    private bool Normalize(SaveModel data)
     {
-        data.Destinations.RemoveAll(entry => entry.Location is null);
+        bool changed = data.Destinations.RemoveAll(entry => entry.Location is null) > 0;
 
         foreach (DestinationEntry entry in data.Destinations)
         {
             if (string.IsNullOrWhiteSpace(entry.Id))
+            {
                 entry.Id = System.Guid.NewGuid().ToString("N");
+                changed = true;
+            }
         }
 
         HashSet<KeyCode> usedHotkeys = [];
@@ -148,8 +160,13 @@ internal class DestinationManager
                 continue;
 
             if (!usedHotkeys.Add(entry.Hotkey))
+            {
                 entry.Hotkey = KeyCode.None;
+                changed = true;
+            }
         }
+
+        return changed;
     }
 
     /// <summary>Migrate legacy fixed-slot save data to the destination list model.</summary>
@@ -162,11 +179,14 @@ internal class DestinationManager
             ReturnPoint = legacy.ReturnPoint
         };
 
+        HashSet<KeyCode> usedHotkeys = [];
         foreach (KeyValuePair<int, Destination> pair in legacy.Destinations.OrderBy(p => p.Key))
         {
             KeyCode hotkey = pair.Key is >= 0 and < ModConfig.MaxLegacyDestinationKeys
                 ? this.Config.GetDestinationKey(pair.Key)
                 : KeyCode.None;
+            if (hotkey != KeyCode.None && !usedHotkeys.Add(hotkey))
+                hotkey = KeyCode.None;
 
             data.Add(new DestinationEntry
             {
