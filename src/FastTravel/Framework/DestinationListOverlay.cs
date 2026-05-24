@@ -32,7 +32,7 @@ internal class DestinationListOverlay : MonoBehaviour
     private const float ContentVerticalPadding = 28f;
 
     /// <summary>The estimated unscaled vertical space used by non-list labels, gaps, and shortcut hints.</summary>
-    private const float NonListContentHeight = 105f;
+    private const float NonListContentHeight = 90f;
 
     /// <summary>The estimated unscaled height of one destination row.</summary>
     private const float DestinationRowHeight = 19f;
@@ -130,8 +130,16 @@ internal class DestinationListOverlay : MonoBehaviour
         if (this.UiScaleIndex < 0)
             this.SetDefaultUiScaleForScreen();
 
+        string? selectedId = this.GetSelectedEntry()?.Id;
         this.Entries.Clear();
         this.Entries.AddRange(entries.Where(entry => entry.Location is not null));
+
+        if (selectedId is not null)
+        {
+            int selectedIndex = this.Entries.FindIndex(entry => entry.Id == selectedId);
+            if (selectedIndex >= 0)
+                this.SelectedIndex = selectedIndex;
+        }
 
         this.SelectedIndex = Math.Min(this.SelectedIndex, Math.Max(this.Entries.Count - 1, 0));
         this.IsRebinding = false;
@@ -170,6 +178,18 @@ internal class DestinationListOverlay : MonoBehaviour
                 this.IsRebinding = false;
             }
 
+            return;
+        }
+
+        if (input.IsKeyJustPressed(KeyCode.PageUp))
+        {
+            this.MovePage(-1);
+            return;
+        }
+
+        if (input.IsKeyJustPressed(KeyCode.PageDown))
+        {
+            this.MovePage(1);
             return;
         }
 
@@ -284,16 +304,16 @@ internal class DestinationListOverlay : MonoBehaviour
 
         GUILayout.FlexibleSpace();
 
-        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)} / 每页 {visibleRowsPerColumn * VisibleColumnCount} 条）";
+        int maxVisibleDestinations = visibleRowsPerColumn * VisibleColumnCount;
+        int pageIndex = this.Entries.Count > 0 ? this.SelectedIndex / maxVisibleDestinations : 0;
+        int pageCount = Math.Max(1, (int)Math.Ceiling(this.Entries.Count / (float)maxVisibleDestinations));
+        string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)} / 第 {pageIndex + 1}/{pageCount} 页 / 每页最多 {maxVisibleDestinations} 条）";
         GUILayout.Label(scaleLabel, this.HelpStyle);
 
         if (this.IsRebinding)
             this.DrawHintRow("1-9 绑定", "Esc 取消");
         else
-        {
-            this.DrawHintRow("↑↓ 选择", "Enter 前往", "→ 改名", "← 字号");
-            this.DrawHintRow("+ 改绑", "-/Del 删除", "Esc 关闭");
-        }
+            this.DrawHintRow("↑↓选择", "PgUp/Dn翻页", "Enter前往", "→改名", "←字号", "+改绑", "-删除", "Esc关");
         GUILayout.EndArea();
     }
 
@@ -342,11 +362,14 @@ internal class DestinationListOverlay : MonoBehaviour
     private void DrawDestinationColumns(float availableWidth, int visibleRowsPerColumn)
     {
         int startIndex = this.GetFirstVisibleIndex(visibleRowsPerColumn);
+        int entriesOnPage = Math.Min(visibleRowsPerColumn * VisibleColumnCount, this.Entries.Count - startIndex);
+        int visibleColumnCount = Math.Max(1, Math.Min(VisibleColumnCount, (int)Math.Ceiling(entriesOnPage / (float)visibleRowsPerColumn)));
         float columnGap = this.Scale(24f);
         float columnWidth = Math.Max(240f, (availableWidth - (columnGap * (VisibleColumnCount - 1))) / VisibleColumnCount);
 
         GUILayout.BeginHorizontal();
-        for (int column = 0; column < VisibleColumnCount; column++)
+        GUILayout.FlexibleSpace();
+        for (int column = 0; column < visibleColumnCount; column++)
         {
             if (column > 0)
                 GUILayout.Space(columnGap);
@@ -369,6 +392,7 @@ internal class DestinationListOverlay : MonoBehaviour
             GUILayout.EndVertical();
         }
 
+        GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
     }
 
@@ -478,7 +502,7 @@ internal class DestinationListOverlay : MonoBehaviour
         foreach (string hint in hints)
         {
             GUILayout.Label(hint, this.HelpStyle, GUILayout.ExpandWidth(false));
-            GUILayout.Space(this.Scale(18f));
+            GUILayout.Space(this.Scale(12f));
         }
         GUILayout.EndHorizontal();
     }
@@ -501,6 +525,22 @@ internal class DestinationListOverlay : MonoBehaviour
         this.SelectedIndex = (this.SelectedIndex + offset + this.Entries.Count) % this.Entries.Count;
     }
 
+    /// <summary>Move to another destination list page while preserving the selected position within the page if possible.</summary>
+    /// <param name="offset">The number of pages to move.</param>
+    private void MovePage(int offset)
+    {
+        if (this.Entries.Count == 0)
+            return;
+
+        int pageSize = this.GetMaxVisibleDestinations();
+        int pageCount = Math.Max(1, (int)Math.Ceiling(this.Entries.Count / (float)pageSize));
+        int pageIndex = Math.Min(this.SelectedIndex / pageSize, pageCount - 1);
+        int indexInPage = this.SelectedIndex % pageSize;
+        int targetPage = Math.Max(0, Math.Min(pageCount - 1, pageIndex + offset));
+
+        this.SelectedIndex = Math.Min((targetPage * pageSize) + indexInPage, this.Entries.Count - 1);
+    }
+
     /// <summary>Get the first entry index visible in the list.</summary>
     /// <param name="visibleRowsPerColumn">The number of rows shown in each column.</param>
     private int GetFirstVisibleIndex(int visibleRowsPerColumn)
@@ -510,6 +550,12 @@ internal class DestinationListOverlay : MonoBehaviour
             return 0;
 
         return (this.SelectedIndex / maxVisibleDestinations) * maxVisibleDestinations;
+    }
+
+    /// <summary>Get the maximum number of destinations shown on the current list page.</summary>
+    private int GetMaxVisibleDestinations()
+    {
+        return this.GetVisibleRowsPerColumn(this.GetOverlayHeight()) * VisibleColumnCount;
     }
 
     /// <summary>Get the quick-select index pressed by the player.</summary>

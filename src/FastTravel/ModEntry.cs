@@ -568,7 +568,7 @@ public class ModEntry : MelonMod
     {
         this.DestinationListOverlay.Show(
             title ?? "快速旅行目的地",
-            entries ?? data.Destinations,
+            entries ?? this.GetDestinationsForDisplay(data.Destinations),
             data.ReturnPoint,
             this.Config.ReturnPointKey,
             onSelect ?? this.InteractivelyFastTravel,
@@ -576,6 +576,37 @@ public class ModEntry : MelonMod
             this.RebindDestination,
             this.InteractivelyRename
         );
+    }
+
+    /// <summary>Get destinations in the order shown to the player.</summary>
+    /// <param name="entries">The destination entries to sort.</param>
+    private IEnumerable<DestinationEntry> GetDestinationsForDisplay(IEnumerable<DestinationEntry> entries)
+    {
+        Dictionary<KeyCode, int> hotkeyOrder = [];
+        foreach (KeyCode hotkey in this.Config.GetDestinationKeys())
+        {
+            if (hotkey != KeyCode.None && !hotkeyOrder.ContainsKey(hotkey))
+                hotkeyOrder[hotkey] = hotkeyOrder.Count;
+        }
+
+        return entries
+            .Select((entry, index) => new { Entry = entry, Index = index })
+            .OrderBy(item => this.GetDestinationDisplayGroup(item.Entry))
+            .ThenBy(item => hotkeyOrder.TryGetValue(item.Entry.Hotkey, out int order) ? order : int.MaxValue)
+            .ThenBy(item => item.Index)
+            .Select(item => item.Entry);
+    }
+
+    /// <summary>Get the display group for a destination entry.</summary>
+    /// <param name="entry">The destination entry.</param>
+    private int GetDestinationDisplayGroup(DestinationEntry entry)
+    {
+        if (entry.Hotkey != KeyCode.None)
+            return 0;
+
+        return string.IsNullOrWhiteSpace(entry.CustomName)
+            ? 2
+            : 1;
     }
 
     /// <summary>Update the destination list if it's currently being shown.</summary>
