@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using Il2Cpp;
+using Il2CppInterop.Runtime;
 using MelonLoader;
 using UnityEngine;
 
@@ -84,7 +85,15 @@ internal class InteractionHelper
         if (maxLength > 0)
             panel.m_GenericMessageGroup.m_InputField.m_MaxLength = (uint)maxLength;
 
-        Panel_Confirmation.CallbackDelegate confirmCallback = new((Action)(() => onConfirm(panel.m_GenericMessageGroup.m_InputField.GetText())));
+        Panel_Confirmation.CallbackDelegate? confirmCallback = DelegateSupport.ConvertDelegate<Panel_Confirmation.CallbackDelegate>(
+            (Delegate)new Action(() => onConfirm(panel.m_GenericMessageGroup.m_InputField.GetText()))
+        );
+        if (confirmCallback is null)
+        {
+            this.Log.Warning("Can't show text input dialogue: failed to create confirmation callback.");
+            return;
+        }
+
         panel.ShowRenamePanel(
             question,
             "Yes",
