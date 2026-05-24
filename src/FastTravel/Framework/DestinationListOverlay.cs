@@ -19,6 +19,9 @@ internal class DestinationListOverlay : MonoBehaviour
     /// <summary>The maximum number of destination rows shown at once.</summary>
     private const int MaxVisibleDestinations = 9;
 
+    /// <summary>The pixel scaling to apply to the destination list UI.</summary>
+    private const float UiScale = 3f;
+
     /// <summary>The maximum length for a custom destination name.</summary>
     private const int MaxCustomNameLength = 80;
 
@@ -251,23 +254,24 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.InitializeStyles();
 
-        float width = Math.Min(760f, Screen.width - 40f);
-        float height = Math.Min(440f, Screen.height - 40f);
+        float margin = Scale(40f);
+        float width = Math.Min(Scale(760f), Screen.width - margin);
+        float height = Math.Min(Scale(440f), Screen.height - margin);
         float x = (Screen.width - width) / 2f;
         float y = (Screen.height - height) / 2f;
 
         Rect box = new(x, y, width, height);
         GUI.Box(box, GUIContent.none);
 
-        GUILayout.BeginArea(new Rect(x + 18f, y + 14f, width - 36f, height - 28f));
+        GUILayout.BeginArea(new Rect(x + Scale(18f), y + Scale(14f), width - Scale(36f), height - Scale(28f)));
         GUILayout.Label(this.Title, this.TitleStyle);
-        GUILayout.Space(8f);
+        GUILayout.Space(Scale(8f));
 
         string returnPoint = this.ReturnPoint is not null
             ? $"返回点 [{this.FormatHotkey(this.ReturnPointKey)}]：{this.ReturnPoint.GetDisplayName(showRegion: true)}"
             : "返回点：未设置";
         GUILayout.Label(returnPoint, this.HelpStyle);
-        GUILayout.Space(10f);
+        GUILayout.Space(Scale(10f));
 
         if (this.Entries.Count == 0)
         {
@@ -295,7 +299,7 @@ internal class DestinationListOverlay : MonoBehaviour
         {
             GUILayout.Label("输入新名称（留空使用默认地点名）：", this.HelpStyle);
             GUI.SetNextControlName(RenameFieldName);
-            this.RenameText = GUILayout.TextField(this.RenameText, MaxCustomNameLength, this.TextFieldStyle!);
+            this.RenameText = GUILayout.TextField(this.RenameText, MaxCustomNameLength, this.TextFieldStyle!, GUILayout.Height(Scale(32f)));
             if (this.ShouldFocusRenameField)
             {
                 GUI.FocusControl(RenameFieldName);
@@ -326,14 +330,14 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.TitleStyle = new GUIStyle(GUI.skin.label)
         {
-            fontSize = 20,
+            fontSize = ScaleFont(20),
             fontStyle = FontStyle.Bold,
             normal = { textColor = Color.white }
         };
 
         this.RowStyle = new GUIStyle(GUI.skin.label)
         {
-            fontSize = 16,
+            fontSize = ScaleFont(16),
             normal = { textColor = new Color(0.82f, 0.82f, 0.78f) }
         };
 
@@ -345,14 +349,36 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.HelpStyle = new GUIStyle(GUI.skin.label)
         {
-            fontSize = 13,
+            fontSize = ScaleFont(13),
             normal = { textColor = new Color(0.72f, 0.72f, 0.68f) }
         };
 
         this.TextFieldStyle = new GUIStyle(GUI.skin.textField)
         {
-            fontSize = 16
+            fontSize = ScaleFont(16),
+            padding = new RectOffset(ScaleInt(6), ScaleInt(6), ScaleInt(4), ScaleInt(4))
         };
+    }
+
+    /// <summary>Scale a pixel size for high-resolution displays.</summary>
+    /// <param name="value">The unscaled value.</param>
+    private static float Scale(float value)
+    {
+        return value * UiScale;
+    }
+
+    /// <summary>Scale a font size for high-resolution displays.</summary>
+    /// <param name="value">The unscaled font size.</param>
+    private static int ScaleFont(int value)
+    {
+        return ScaleInt(value);
+    }
+
+    /// <summary>Scale an integer pixel size for high-resolution displays.</summary>
+    /// <param name="value">The unscaled value.</param>
+    private static int ScaleInt(int value)
+    {
+        return (int)Math.Round(value * UiScale);
     }
 
     /// <summary>Start renaming the selected destination.</summary>
