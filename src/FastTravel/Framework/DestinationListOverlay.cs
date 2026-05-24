@@ -242,13 +242,13 @@ internal class DestinationListOverlay : MonoBehaviour
             return;
         }
 
-        if (input.IsKeyJustPressed(KeyCode.LeftBracket))
+        if (input.IsKeyJustPressed(KeyCode.LeftArrow))
         {
             this.ChangeUiScale(-1);
             return;
         }
 
-        if (input.IsKeyJustPressed(KeyCode.RightBracket))
+        if (input.IsKeyJustPressed(KeyCode.RightArrow))
         {
             this.ChangeUiScale(1);
             return;
@@ -335,7 +335,7 @@ internal class DestinationListOverlay : MonoBehaviour
                 this.DrawHintRow("1-9 绑定", "Esc 取消");
             else
             {
-                this.DrawHintRow("↑↓ 选择", "Enter 前往", "R 改名", "[ ] 字号");
+                this.DrawHintRow("↑↓ 选择", "← → 字号", "Enter 前往", "R 改名");
                 this.DrawHintRow("+ 改绑", "-/Del 删除", "Esc 关闭");
             }
         }

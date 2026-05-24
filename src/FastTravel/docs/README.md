@@ -40,7 +40,7 @@ To use fast travel (with the default options):
   selected destination from the destination list.
 - Rename a destination by opening the destination list, selecting it, and pressing `[R]`. Leave the
   name empty to use the default location name.
-- Change the destination list text size by pressing `[` or `]` until the displayed scale feels
+- Change the destination list text size by pressing the left or right arrow until the displayed scale feels
   comfortable.
 - Rebind a destination by opening the destination list, selecting it, pressing `[numpad +]`, then
   pressing the new destination key.
