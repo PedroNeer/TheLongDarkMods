@@ -42,6 +42,7 @@ To use fast travel (with the default options):
   Leave the name empty to use the default location name.
 - Change the destination list text size by pressing the left arrow until the displayed scale feels
   comfortable.
+- The destination list shows two columns and starts at 3.5x text size by default.
 - Rebind a destination by opening the destination list, selecting it, pressing `[numpad +]`, then
   pressing the new destination key.
 - Return to where you were before your _most recent_ fast travel by pressing `[numpad 0]`.

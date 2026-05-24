@@ -4,6 +4,7 @@
 ## Upcoming release
 * Added support for any number of saved destinations.
 * Added an interactive destination list for choosing, renaming, deleting, and rebinding saved destinations.
+* Changed the destination list to a two-column layout with a 3.5x default text scale.
 * Changed destination hotkeys into shortcuts. Saving to a hotkey now adds a new destination and leaves the previous destination in the list.
 * Added keyboard-controlled text scaling to the destination list for high-resolution displays.
 * Added automatic migration from legacy fixed-slot save data.

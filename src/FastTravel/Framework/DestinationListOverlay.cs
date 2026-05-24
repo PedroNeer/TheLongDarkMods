@@ -16,17 +16,17 @@ internal class DestinationListOverlay : MonoBehaviour
     /*********
     ** Fields
     *********/
+    /// <summary>The number of destination rows shown in each column.</summary>
+    private const int VisibleRowsPerColumn = 9;
+
+    /// <summary>The number of destination columns shown at once.</summary>
+    private const int VisibleColumnCount = 2;
+
     /// <summary>The maximum number of destination rows shown at once.</summary>
-    private const int MaxVisibleDestinations = 9;
+    private const int MaxVisibleDestinations = VisibleRowsPerColumn * VisibleColumnCount;
 
     /// <summary>The pixel scaling to apply to the destination list UI.</summary>
     private static readonly float[] UiScaleSteps = [1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f, 4.5f, 5f];
-
-    /// <summary>The maximum length for a custom destination name.</summary>
-    private const int MaxCustomNameLength = 80;
-
-    /// <summary>The GUI control name for the rename text field.</summary>
-    private const string RenameFieldName = "FastTravelRenameField";
 
     /// <summary>The entries shown in the list.</summary>
     private readonly List<DestinationEntry> Entries = [];
@@ -35,7 +35,7 @@ internal class DestinationListOverlay : MonoBehaviour
     private string Title = "快速旅行目的地";
 
     /// <summary>The selected UI scale step.</summary>
-    private int UiScaleIndex = 4; // default to 3x for 4K testing
+    private int UiScaleIndex = 5; // default to 3.5x for 4K testing
 
     /// <summary>The current return point.</summary>
     private Destination? ReturnPoint;
@@ -49,15 +49,6 @@ internal class DestinationListOverlay : MonoBehaviour
     /// <summary>Whether the next destination hotkey should rebind the selected entry.</summary>
     private bool IsRebinding;
 
-    /// <summary>Whether the selected entry is being renamed.</summary>
-    private bool IsRenaming;
-
-    /// <summary>The custom name currently being edited.</summary>
-    private string RenameText = "";
-
-    /// <summary>Whether the rename text field should be focused on the next draw.</summary>
-    private bool ShouldFocusRenameField;
-
     /// <summary>The callback to invoke when an entry is selected.</summary>
     private Action<DestinationEntry>? OnSelect;
 
@@ -68,7 +59,7 @@ internal class DestinationListOverlay : MonoBehaviour
     private Action<DestinationEntry, KeyCode>? OnRebind;
 
     /// <summary>The callback to invoke when an entry should be renamed.</summary>
-    private Action<DestinationEntry, string?>? OnRename;
+    private Action<DestinationEntry>? OnRename;
 
     /// <summary>The title label style.</summary>
     private GUIStyle? TitleStyle;
@@ -81,9 +72,6 @@ internal class DestinationListOverlay : MonoBehaviour
 
     /// <summary>The help label style.</summary>
     private GUIStyle? HelpStyle;
-
-    /// <summary>The text field style.</summary>
-    private GUIStyle? TextFieldStyle;
 
 
     /*********
@@ -120,7 +108,7 @@ internal class DestinationListOverlay : MonoBehaviour
     /// <param name="onDelete">The callback to invoke when an entry should be deleted.</param>
     /// <param name="onRebind">The callback to invoke when an entry should be rebound to a new hotkey.</param>
     /// <param name="onRename">The callback to invoke when an entry should be renamed.</param>
-    internal void Show(string title, IEnumerable<DestinationEntry> entries, Destination? returnPoint, KeyCode returnPointKey, Action<DestinationEntry> onSelect, Action<DestinationEntry> onDelete, Action<DestinationEntry, KeyCode> onRebind, Action<DestinationEntry, string?> onRename)
+    internal void Show(string title, IEnumerable<DestinationEntry> entries, Destination? returnPoint, KeyCode returnPointKey, Action<DestinationEntry> onSelect, Action<DestinationEntry> onDelete, Action<DestinationEntry, KeyCode> onRebind, Action<DestinationEntry> onRename)
     {
         this.Title = title;
         this.ReturnPoint = returnPoint;
@@ -135,7 +123,6 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.SelectedIndex = Math.Min(this.SelectedIndex, Math.Max(this.Entries.Count - 1, 0));
         this.IsRebinding = false;
-        this.IsRenaming = false;
         this.IsVisible = true;
     }
 
@@ -144,7 +131,6 @@ internal class DestinationListOverlay : MonoBehaviour
     {
         this.IsVisible = false;
         this.IsRebinding = false;
-        this.IsRenaming = false;
     }
 
     /// <summary>Handle a key press while the overlay is open.</summary>
@@ -154,23 +140,6 @@ internal class DestinationListOverlay : MonoBehaviour
     {
         if (!this.IsVisible)
             return;
-
-        if (this.IsRenaming)
-        {
-            if (input.IsKeyJustPressed(KeyCode.Escape))
-            {
-                this.IsRenaming = false;
-                return;
-            }
-
-            if (input.IsKeyJustPressed(KeyCode.Return) || input.IsKeyJustPressed(KeyCode.KeypadEnter))
-            {
-                this.CommitRename();
-                return;
-            }
-
-            return;
-        }
 
         if (input.IsKeyJustPressed(KeyCode.Escape))
         {
@@ -238,7 +207,13 @@ internal class DestinationListOverlay : MonoBehaviour
 
         if (input.IsKeyJustPressed(KeyCode.RightArrow))
         {
-            this.BeginRename();
+            DestinationEntry? selected = this.GetSelectedEntry();
+            if (selected is not null)
+            {
+                this.Hide();
+                this.OnRename?.Invoke(selected);
+            }
+
             return;
         }
 
@@ -266,9 +241,9 @@ internal class DestinationListOverlay : MonoBehaviour
 
         this.InitializeStyles();
 
-        float margin = this.Scale(40f);
-        float width = Math.Min(this.Scale(760f), Screen.width - margin);
-        float height = Math.Min(this.Scale(440f), Screen.height - margin);
+        float margin = Math.Max(40f, Math.Min(160f, Screen.width * 0.04f));
+        float width = Math.Min(Math.Max(980f, Screen.width * 0.86f), Screen.width - margin);
+        float height = Math.Min(Math.Max(620f, Screen.height * 0.76f), Screen.height - margin);
         float x = (Screen.width - width) / 2f;
         float y = (Screen.height - height) / 2f;
 
@@ -291,18 +266,7 @@ internal class DestinationListOverlay : MonoBehaviour
         }
         else
         {
-            int startIndex = this.GetFirstVisibleIndex();
-            int endIndex = Math.Min(startIndex + MaxVisibleDestinations, this.Entries.Count);
-
-            for (int i = startIndex; i < endIndex; i++)
-            {
-                DestinationEntry entry = this.Entries[i];
-                bool isSelected = i == this.SelectedIndex;
-                string selector = isSelected ? ">" : " ";
-                string row = $"{selector} {i + 1}. [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
-
-                GUILayout.Label(row, isSelected ? this.SelectedRowStyle : this.RowStyle);
-            }
+            this.DrawDestinationColumns(width - this.Scale(36f));
         }
 
         GUILayout.FlexibleSpace();
@@ -310,28 +274,12 @@ internal class DestinationListOverlay : MonoBehaviour
         string scaleLabel = $"字号：{this.UiScale:0.#}x（标题 {this.ScaleFont(20)} / 列表 {this.ScaleFont(16)} / 提示 {this.ScaleFont(13)}）";
         GUILayout.Label(scaleLabel, this.HelpStyle);
 
-        if (this.IsRenaming)
-        {
-            GUILayout.Label("输入新名称（留空使用默认地点名）：", this.HelpStyle);
-            GUI.SetNextControlName(RenameFieldName);
-            this.RenameText = GUILayout.TextField(this.RenameText, MaxCustomNameLength, this.TextFieldStyle!, GUILayout.Height(this.Scale(32f)));
-            if (this.ShouldFocusRenameField)
-            {
-                GUI.FocusControl(RenameFieldName);
-                this.ShouldFocusRenameField = false;
-            }
-
-            GUILayout.Label("Enter保存  Esc取消", this.HelpStyle);
-        }
+        if (this.IsRebinding)
+            this.DrawHintRow("1-9 绑定", "Esc 取消");
         else
         {
-            if (this.IsRebinding)
-                this.DrawHintRow("1-9 绑定", "Esc 取消");
-            else
-            {
-                this.DrawHintRow("↑↓ 选择", "Enter 前往", "→ 改名", "← 字号");
-                this.DrawHintRow("+ 改绑", "-/Del 删除", "Esc 关闭");
-            }
+            this.DrawHintRow("↑↓ 选择", "Enter 前往", "→ 改名", "← 字号");
+            this.DrawHintRow("+ 改绑", "-/Del 删除", "Esc 关闭");
         }
         GUILayout.EndArea();
     }
@@ -356,6 +304,8 @@ internal class DestinationListOverlay : MonoBehaviour
         this.RowStyle = new GUIStyle(GUI.skin.label)
         {
             fontSize = this.ScaleFont(16),
+            clipping = TextClipping.Clip,
+            wordWrap = false,
             normal = { textColor = new Color(0.82f, 0.82f, 0.78f) }
         };
 
@@ -371,11 +321,41 @@ internal class DestinationListOverlay : MonoBehaviour
             normal = { textColor = new Color(0.72f, 0.72f, 0.68f) }
         };
 
-        this.TextFieldStyle = new GUIStyle(GUI.skin.textField)
+    }
+
+    /// <summary>Draw saved destinations in two page-filled columns.</summary>
+    /// <param name="availableWidth">The width available for the columns.</param>
+    private void DrawDestinationColumns(float availableWidth)
+    {
+        int startIndex = this.GetFirstVisibleIndex();
+        float columnGap = this.Scale(24f);
+        float columnWidth = Math.Max(240f, (availableWidth - (columnGap * (VisibleColumnCount - 1))) / VisibleColumnCount);
+
+        GUILayout.BeginHorizontal();
+        for (int column = 0; column < VisibleColumnCount; column++)
         {
-            fontSize = this.ScaleFont(16),
-            padding = new RectOffset(this.ScaleInt(6), this.ScaleInt(6), this.ScaleInt(4), this.ScaleInt(4))
-        };
+            if (column > 0)
+                GUILayout.Space(columnGap);
+
+            GUILayout.BeginVertical(GUILayout.Width(columnWidth));
+            for (int rowIndex = 0; rowIndex < VisibleRowsPerColumn; rowIndex++)
+            {
+                int entryIndex = startIndex + (column * VisibleRowsPerColumn) + rowIndex;
+                if (entryIndex >= this.Entries.Count)
+                    break;
+
+                DestinationEntry entry = this.Entries[entryIndex];
+                bool isSelected = entryIndex == this.SelectedIndex;
+                string selector = isSelected ? ">" : " ";
+                string row = $"{selector} {entryIndex + 1}. [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
+
+                GUILayout.Label(row, isSelected ? this.SelectedRowStyle : this.RowStyle, GUILayout.Width(columnWidth));
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        GUILayout.EndHorizontal();
     }
 
     /// <summary>Scale a pixel size for high-resolution displays.</summary>
@@ -413,7 +393,6 @@ internal class DestinationListOverlay : MonoBehaviour
         this.RowStyle = null;
         this.SelectedRowStyle = null;
         this.HelpStyle = null;
-        this.TextFieldStyle = null;
     }
 
     /// <summary>Draw a row of concise shortcut hints.</summary>
@@ -427,29 +406,6 @@ internal class DestinationListOverlay : MonoBehaviour
             GUILayout.Space(this.Scale(18f));
         }
         GUILayout.EndHorizontal();
-    }
-
-    /// <summary>Start renaming the selected destination.</summary>
-    private void BeginRename()
-    {
-        DestinationEntry? selected = this.GetSelectedEntry();
-        if (selected is null)
-            return;
-
-        this.IsRenaming = true;
-        this.RenameText = selected.CustomName ?? "";
-        this.ShouldFocusRenameField = true;
-    }
-
-    /// <summary>Save the current rename text.</summary>
-    private void CommitRename()
-    {
-        DestinationEntry? selected = this.GetSelectedEntry();
-        if (selected is null)
-            return;
-
-        this.IsRenaming = false;
-        this.OnRename?.Invoke(selected, this.RenameText);
     }
 
     /// <summary>Get the selected destination entry.</summary>
@@ -476,12 +432,7 @@ internal class DestinationListOverlay : MonoBehaviour
         if (this.Entries.Count <= MaxVisibleDestinations)
             return 0;
 
-        int first = this.SelectedIndex - MaxVisibleDestinations + 1;
-        if (first < 0)
-            return 0;
-
-        int maxFirst = this.Entries.Count - MaxVisibleDestinations;
-        return Math.Min(first, maxFirst);
+        return (this.SelectedIndex / MaxVisibleDestinations) * MaxVisibleDestinations;
     }
 
     /// <summary>Get the quick-select index pressed by the player.</summary>
