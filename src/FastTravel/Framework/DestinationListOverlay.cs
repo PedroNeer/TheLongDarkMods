@@ -23,7 +23,7 @@ internal class DestinationListOverlay : MonoBehaviour
     private readonly List<DestinationEntry> Entries = [];
 
     /// <summary>The current title text.</summary>
-    private string Title = "Fast travel destinations";
+    private string Title = "快速旅行目的地";
 
     /// <summary>The current return point.</summary>
     private Destination? ReturnPoint;
@@ -216,14 +216,14 @@ internal class DestinationListOverlay : MonoBehaviour
         GUILayout.Space(8f);
 
         string returnPoint = this.ReturnPoint is not null
-            ? $"Return point [{this.ReturnPointKey}]: {this.ReturnPoint.GetDisplayName(showRegion: true)}"
-            : "Return point: none set";
+            ? $"返回点 [{this.FormatHotkey(this.ReturnPointKey)}]：{this.ReturnPoint.GetDisplayName(showRegion: true)}"
+            : "返回点：未设置";
         GUILayout.Label(returnPoint, this.HelpStyle);
         GUILayout.Space(10f);
 
         if (this.Entries.Count == 0)
         {
-            GUILayout.Label("No saved destinations.", this.RowStyle);
+            GUILayout.Label("还没有保存目的地。", this.RowStyle);
         }
         else
         {
@@ -235,7 +235,7 @@ internal class DestinationListOverlay : MonoBehaviour
                 DestinationEntry entry = this.Entries[i];
                 bool isSelected = i == this.SelectedIndex;
                 string selector = isSelected ? ">" : " ";
-                string row = $"{selector} {i + 1}. [{entry.Hotkey}] {entry.GetDisplayName(showRegion: true)}";
+                string row = $"{selector} {i + 1}. [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
 
                 GUILayout.Label(row, isSelected ? this.SelectedRowStyle : this.RowStyle);
             }
@@ -244,8 +244,8 @@ internal class DestinationListOverlay : MonoBehaviour
         GUILayout.FlexibleSpace();
 
         string help = this.IsRebinding
-            ? "Press one of the configured destination keys to bind it, or Esc to cancel."
-            : "Up/Down select  Enter travel  Save key rebind  Delete key forget  Esc close";
+            ? "按一个已配置的目的地快捷键完成绑定，或按 Esc 取消。"
+            : "上/下选择  Enter旅行  保存键改绑  删除键删除  Esc关闭";
         GUILayout.Label(help, this.HelpStyle);
         GUILayout.EndArea();
     }
@@ -355,6 +355,15 @@ internal class DestinationListOverlay : MonoBehaviour
         }
 
         return -1;
+    }
+
+    /// <summary>Get a player-facing hotkey label.</summary>
+    /// <param name="hotkey">The hotkey to display.</param>
+    private string FormatHotkey(KeyCode hotkey)
+    {
+        return hotkey == KeyCode.None
+            ? "未绑定"
+            : hotkey.ToString();
     }
 
     /// <summary>Get the destination hotkey pressed by the player.</summary>

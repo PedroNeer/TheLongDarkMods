@@ -34,14 +34,14 @@ internal class SaveModel
         return this.Destinations.FirstOrDefault(entry => entry.Id == id);
     }
 
-    /// <summary>Get the saved destination entries bound to a hotkey.</summary>
+    /// <summary>Get the saved destination entry bound to a hotkey.</summary>
     /// <param name="hotkey">The hotkey to match.</param>
-    public IEnumerable<DestinationEntry> GetByHotkey(KeyCode hotkey)
+    public DestinationEntry? GetByHotkey(KeyCode hotkey)
     {
         if (hotkey == KeyCode.None)
-            return [];
+            return null;
 
-        return this.Destinations.Where(entry => entry.Hotkey == hotkey);
+        return this.Destinations.LastOrDefault(entry => entry.Hotkey == hotkey);
     }
 
     /// <summary>Add a new saved destination entry.</summary>
@@ -55,6 +55,23 @@ internal class SaveModel
             entry.Id = Guid.NewGuid().ToString("N");
 
         this.Destinations.Add(entry);
+    }
+
+    /// <summary>Bind an entry to a hotkey, unbinding any other entry currently using it.</summary>
+    /// <param name="entry">The destination entry to bind.</param>
+    /// <param name="hotkey">The hotkey to bind.</param>
+    public void BindHotkey(DestinationEntry entry, KeyCode hotkey)
+    {
+        if (hotkey != KeyCode.None)
+        {
+            foreach (DestinationEntry saved in this.Destinations)
+            {
+                if (saved.Id != entry.Id && saved.Hotkey == hotkey)
+                    saved.Hotkey = KeyCode.None;
+            }
+        }
+
+        entry.Hotkey = hotkey;
     }
 
     /// <summary>Remove a saved destination entry.</summary>

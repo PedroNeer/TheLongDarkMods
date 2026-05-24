@@ -86,7 +86,7 @@ internal class Destination
             {
                 string regionName = Localization.Get(this.Region.NameLocalizationId);
                 if (regionName != name)
-                    name += $" in {regionName}"; // don't use `this.LastTransition.LastOutdoorScene`, since it sometimes shows the wrong location
+                    name += $"（{regionName}）"; // don't use `this.LastTransition.LastOutdoorScene`, since it sometimes shows the wrong location
             }
         }
 

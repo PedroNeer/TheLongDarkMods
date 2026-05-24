@@ -21,137 +21,137 @@ internal class ModConfig : JsonModSettings
     /****
     ** Main options
     ****/
-    [Section("Main options")]
-    [Name("Can travel")]
-    [Description("Whether fast traveling is enabled at all.\n\nDisable if you only want to fast travel in specific cases (e.g. when transferring from one base to another).")]
+    [Section("主要选项")]
+    [Name("允许快速旅行")]
+    [Description("是否启用快速旅行。\n\n如果你只想在特定情况下使用快速旅行，可以关闭此项。")]
     public bool CanTravel = true;
 
-    [Name("Can edit destinations")]
-    [Description("Whether you can edit your fast travel destinations.\n\nDisabling it after you've set up your options can avoid accidental changes.")]
+    [Name("允许编辑目的地")]
+    [Description("是否允许编辑快速旅行目的地。\n\n设置好目的地后可以关闭此项，避免误操作。")]
     public bool CanEditDestinations = true;
 
     /****
     ** Restrict by location
     ****/
-    [Section("Restrict by location")]
-    [Name("Can travel from outside")]
-    [Description("Whether you can fast travel while you're outside.\n\nDisable to avoid the temptation of escaping risky situations with fast travel.")]
+    [Section("地点限制")]
+    [Name("允许从室外出发")]
+    [Description("是否允许在室外快速旅行。\n\n关闭后可避免在危险情况下用快速旅行脱身。")]
     public bool CanTravelFromOutside = true;
 
-    [Name("Can travel from non-safehouse interior")]
-    [Description("Whether you can fast travel from non-customizable interiors like caves.")]
+    [Name("允许从非安全屋室内出发")]
+    [Description("是否允许从洞穴等不可自定义的室内地点快速旅行。")]
     public bool CanTravelFromNonSafehouseInterior = true;
 
-    [Name("Can travel from non-saved location")]
-    [Description("Whether you can fast travel from a location that doesn't contain a fast travel point.\n\nDisable if you only want point-to-point fast travel (e.g. between saved home bases).")]
+    [Name("允许从未保存地点出发")]
+    [Description("是否允许从没有快速旅行点的地点出发。\n\n如果你只想在已保存地点之间点对点旅行，可以关闭此项。")]
     public bool CanTravelFromNonFastTravelPoint = true;
 
-    [Name("Can travel within same location")]
-    [Description("Whether you can fast travel from one point to another in the same location.")]
+    [Name("允许同一地点内旅行")]
+    [Description("是否允许在同一个场景内从一个点快速旅行到另一个点。")]
     public bool CanTravelWithinScene = true;
 
-    [Name("Can travel while under attack")]
-    [Description("Whether you can fast travel while hostile animals are attacking, stalking, or following you.")]
+    [Name("允许受攻击时旅行")]
+    [Description("是否允许在敌对动物攻击、跟踪或追随你时快速旅行。")]
     public bool CanTravelWhileUnderAttack = true;
 
     /****
     ** Restrict by weather
     ****/
-    [Section("Restrict by weather")]
-    [Name("Can travel during aurora")]
-    [Description("Whether you can fast travel during an aurora.")]
+    [Section("天气限制")]
+    [Name("允许极光期间旅行")]
+    [Description("是否允许在极光期间快速旅行。")]
     public bool CanTravelDuringAurora = true;
 
-    [Name("Can travel through dense fog")]
-    [Description("Whether you can fast travel during dense fog in your departure region.")]
+    [Name("允许浓雾中旅行")]
+    [Description("是否允许在出发区域有浓雾时快速旅行。")]
     public bool CanTravelDuringDenseFog = true;
 
-    [Name("Can travel through glimmer fog")]
-    [Description("Whether you can fast travel during glimmer fog in your departure region.")]
+    [Name("允许闪光雾中旅行")]
+    [Description("是否允许在出发区域有闪光雾时快速旅行。")]
     public bool CanTravelDuringGlimmerFog = true;
 
-    [Name("Can travel through light snowfall")]
-    [Description("Whether you can fast travel during normal snowfall in your departure region.")]
+    [Name("允许小雪中旅行")]
+    [Description("是否允许在出发区域正常降雪时快速旅行。")]
     public bool CanTravelDuringLightSnowfall = true;
 
-    [Name("Can travel through heavy snowfall")]
-    [Description("Whether you can fast travel during heavy snowfall in your departure region.")]
+    [Name("允许大雪中旅行")]
+    [Description("是否允许在出发区域大雪时快速旅行。")]
     public bool CanTravelDuringHeavySnowfall = true;
 
-    [Name("Can travel through blizzard")]
-    [Description("Whether you can fast travel during a blizzard in your departure region.")]
+    [Name("允许暴风雪中旅行")]
+    [Description("是否允许在出发区域暴风雪时快速旅行。")]
     public bool CanTravelDuringBlizzard = true;
 
     /****
     ** Modifier keys
     ****/
-    [Section("Modifier keys")]
-    [Name("Save destination")]
-    [Description("Save your current place as a fast travel destination by holding this key, then pressing the destination key below you want to bind it to.")]
+    [Section("组合键")]
+    [Name("保存目的地")]
+    [Description("按住此键，再按下面的目的地快捷键，可将当前位置保存为新目的地并绑定到该快捷键。\n\n如果该快捷键已有目的地，会改绑到新目的地；旧目的地仍保留在列表中。")]
     public KeyCode SaveModifierKey = KeyCode.KeypadPlus;
 
-    [Name("Forget destination")]
-    [Description("Forget a destination by holding this key, then pressing the destination key below you want to delete.")]
+    [Name("删除目的地")]
+    [Description("按住此键，再按下面的目的地快捷键，可删除绑定到该快捷键的目的地。")]
     public KeyCode DeleteModifierKey = KeyCode.KeypadMinus;
 
     /****
     ** Fast travel keys
     ****/
-    [Section("Fast travel keys")]
-    [Name("Show destination list")]
-    [Description("Press this button to open your saved destination list.")]
+    [Section("目的地快捷键")]
+    [Name("打开目的地列表")]
+    [Description("按此键打开已保存目的地列表。")]
     public KeyCode ShowListKey = KeyCode.KeypadPeriod;
 
-    [Name("Fast travel point 1")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 1")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination1 = KeyCode.Keypad1;
 
-    [Name("Fast travel point 2")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 2")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination2 = KeyCode.Keypad2;
 
-    [Name("Fast travel point 3")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 3")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination3 = KeyCode.Keypad3;
 
-    [Name("Fast travel point 4")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 4")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination4 = KeyCode.Keypad4;
 
-    [Name("Fast travel point 5")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 5")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination5 = KeyCode.Keypad5;
 
-    [Name("Fast travel point 6")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 6")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination6 = KeyCode.Keypad6;
 
-    [Name("Fast travel point 7")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 7")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination7 = KeyCode.Keypad7;
 
-    [Name("Fast travel point 8")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 8")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination8 = KeyCode.Keypad8;
 
-    [Name("Fast travel point 9")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Name("目的地快捷键 9")]
+    [Description("按此键前往当前绑定的目的地。可使用上方组合键保存新目的地或更改绑定。")]
     public KeyCode Destination9 = KeyCode.Keypad9;
 
-    [Name("Return to previous location")]
-    [Description("Press this button to return to where you were before your *most recent* fast travel.")]
+    [Name("返回上一个位置")]
+    [Description("按此键返回你最近一次快速旅行前所在的位置。")]
     public KeyCode ReturnPointKey = KeyCode.Keypad0;
 
     /****
     ** Other
     ****/
-    [Section("Other")]
-    [Name("Show usage hints")]
-    [Description("Whether in-game messages should include usage hints like \"You can return here later by pressing <key>\".\n\nDisable if you're familiar with the mod and want less immersion-breaking messages.")]
+    [Section("其他")]
+    [Name("显示使用提示")]
+    [Description("游戏内消息是否显示类似“之后可以按某个按键回到这里”的使用提示。\n\n熟悉本模组后可关闭，以减少打破沉浸感的消息。")]
     public bool ShowUsageHints = true;
 
-    [Name("Log debug info")]
-    [Description("Whether to log debug information about scene transitions and fast travel. This is meant for troubleshooting, and has no effect on the in-game behavior.")]
+    [Name("记录调试信息")]
+    [Description("是否记录场景切换和快速旅行相关调试信息。此选项用于排查问题，不影响游戏内行为。")]
     public bool LogDebugInfo = false;
 
 

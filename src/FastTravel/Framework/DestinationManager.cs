@@ -113,7 +113,7 @@ internal class DestinationManager
                 }
                 catch (JsonException ex)
                 {
-                    this.Log.Error("Can't load saved destinations; the data will be reset.", ex);
+                    this.Log.Error("无法读取已保存的快速旅行目的地，数据将被重置。", ex);
                 }
             }
         }
@@ -138,6 +138,17 @@ internal class DestinationManager
         {
             if (string.IsNullOrWhiteSpace(entry.Id))
                 entry.Id = System.Guid.NewGuid().ToString("N");
+        }
+
+        HashSet<KeyCode> usedHotkeys = [];
+        for (int i = data.Destinations.Count - 1; i >= 0; i--)
+        {
+            DestinationEntry entry = data.Destinations[i];
+            if (entry.Hotkey == KeyCode.None)
+                continue;
+
+            if (!usedHotkeys.Add(entry.Hotkey))
+                entry.Hotkey = KeyCode.None;
         }
     }
 

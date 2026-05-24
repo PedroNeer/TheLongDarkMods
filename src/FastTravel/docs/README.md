@@ -32,10 +32,10 @@ if needed.
 
 To use fast travel (with the default options):
 - Open the destination list by pressing `[numpad period]`, then choose where to travel.
-- Travel to destinations bound to a shortcut key by pressing that key. If more than one destination
-  uses the key, you'll choose from a short list.
+- Travel to the destination bound to a shortcut key by pressing that key.
 - Save your current position as a new fast travel destination by pressing `[numpad +]` + destination
-  key.
+  key. If that key already had a destination, the old destination stays in your list but loses the
+  shortcut.
 - Delete a saved fast travel destination by pressing `[numpad -]` + destination key, or delete the
   selected destination from the destination list.
 - Rebind a destination by opening the destination list, selecting it, pressing `[numpad +]`, then
