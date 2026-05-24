@@ -84,12 +84,13 @@ internal class InteractionHelper
         if (maxLength > 0)
             panel.m_GenericMessageGroup.m_InputField.m_MaxLength = (uint)maxLength;
 
+        Panel_Confirmation.CallbackDelegate confirmCallback = new((Action)(() => onConfirm(panel.m_GenericMessageGroup.m_InputField.GetText())));
         panel.ShowRenamePanel(
             question,
             "Yes",
             "No",
             initialText ?? "",
-            () => onConfirm(panel.m_GenericMessageGroup.m_InputField.GetText()),
+            confirmCallback,
             null
         );
     }
