@@ -1,5 +1,5 @@
-**Fast Travel** is a [The Long Dark] survival mode mod that lets you save up to 9 places (like your
-home base), and fast travel to them anytime at the press of a button.
+**Fast Travel** is a [The Long Dark] survival mode mod that lets you save places (like your home
+base), and fast travel to them anytime through a destination list or shortcut key.
 
 For example, you can have one home base while you explore the world without the tedium of
 transferring your hoard to each region.
@@ -26,15 +26,21 @@ transferring your hoard to each region.
 You can [edit the mod settings](#configure) to choose when you can fast travel.
 
 ## Use
-You can save up to 9 places as a fast travel point. Each one is bound to a specific key (by default
-numpad 1 through 9); you can change all the keys in the [mod options](#configure) if needed.
+You can save any number of fast travel destinations. Each one can be bound to a shortcut key (by
+default numpad 1 through 9); you can change all the shortcut keys in the [mod options](#configure)
+if needed.
 
 To use fast travel (with the default options):
-- Travel to a saved position anytime by pressing its key.
-- Save your current position as a fast travel point by pressing `[numpad +]` + destination key.
-- Delete a saved fast travel point by pressing `[numpad -]` + destination key.
+- Open the destination list by pressing `[numpad period]`, then choose where to travel.
+- Travel to destinations bound to a shortcut key by pressing that key. If more than one destination
+  uses the key, you'll choose from a short list.
+- Save your current position as a new fast travel destination by pressing `[numpad +]` + destination
+  key.
+- Delete a saved fast travel destination by pressing `[numpad -]` + destination key, or delete the
+  selected destination from the destination list.
+- Rebind a destination by opening the destination list, selecting it, pressing `[numpad +]`, then
+  pressing the new destination key.
 - Return to where you were before your _most recent_ fast travel by pressing `[numpad 0]`.
-- View a list of saved destinations by pressing `[numpad period]`.
 
 The mod always asks for confirmation, so you can't fast travel or change your saved destinations by
 mistake.

@@ -45,7 +45,7 @@ internal class FastTravelRestrictionHelper
         }
 
         // from non-fast travel point
-        if (!this.Config.CanTravelFromNonFastTravelPoint && data.Destinations.All(p => p.Value.Scene.Name != from.Scene.Name))
+        if (!this.Config.CanTravelFromNonFastTravelPoint && data.Destinations.All(entry => entry.Location.Scene.Name != from.Scene.Name))
         {
             reasonPhrase = "from a non-saved destination";
             return false;

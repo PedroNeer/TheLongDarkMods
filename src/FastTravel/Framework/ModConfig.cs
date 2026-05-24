@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using ModSettings;
 using UnityEngine;
 
@@ -6,6 +8,13 @@ namespace Pathoschild.TheLongDarkMods.FastTravel.Framework;
 /// <summary>The mod config model.</summary>
 internal class ModConfig : JsonModSettings
 {
+    /*********
+    ** Fields
+    *********/
+    /// <summary>The number of legacy destination hotkeys exposed in the mod settings.</summary>
+    public const int MaxLegacyDestinationKeys = 9;
+
+
     /*********
     ** Accessors
     *********/
@@ -90,43 +99,43 @@ internal class ModConfig : JsonModSettings
     ****/
     [Section("Fast travel keys")]
     [Name("Show destination list")]
-    [Description("Press this button to toggle an on-screen overlay which lists your saved destinations.")]
+    [Description("Press this button to open your saved destination list.")]
     public KeyCode ShowListKey = KeyCode.KeypadPeriod;
 
     [Name("Fast travel point 1")]
-    [Description("Press this button to fast travel to your first saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination1 = KeyCode.Keypad1;
 
     [Name("Fast travel point 2")]
-    [Description("Press this button to fast travel to your second saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination2 = KeyCode.Keypad2;
 
     [Name("Fast travel point 3")]
-    [Description("Press this button to fast travel to your third saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination3 = KeyCode.Keypad3;
 
     [Name("Fast travel point 4")]
-    [Description("Press this button to fast travel to your fourth saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination4 = KeyCode.Keypad4;
 
     [Name("Fast travel point 5")]
-    [Description("Press this button to fast travel to your fifth saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination5 = KeyCode.Keypad5;
 
     [Name("Fast travel point 6")]
-    [Description("Press this button to fast travel to your sixth saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination6 = KeyCode.Keypad6;
 
     [Name("Fast travel point 7")]
-    [Description("Press this button to fast travel to your seventh saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination7 = KeyCode.Keypad7;
 
     [Name("Fast travel point 8")]
-    [Description("Press this button to fast travel to your eighth saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination8 = KeyCode.Keypad8;
 
     [Name("Fast travel point 9")]
-    [Description("Press this button to fast travel to your ninth saved destination. You can change this point using the 'modifier keys' above.")]
+    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination9 = KeyCode.Keypad9;
 
     [Name("Return to previous location")]
@@ -144,4 +153,34 @@ internal class ModConfig : JsonModSettings
     [Name("Log debug info")]
     [Description("Whether to log debug information about scene transitions and fast travel. This is meant for troubleshooting, and has no effect on the in-game behavior.")]
     public bool LogDebugInfo = false;
+
+
+    /*********
+    ** Public methods
+    *********/
+    /// <summary>Get the configured destination hotkey for a legacy slot.</summary>
+    /// <param name="slotIndex">The legacy slot index.</param>
+    public KeyCode GetDestinationKey(int slotIndex)
+    {
+        return slotIndex switch
+        {
+            0 => this.Destination1,
+            1 => this.Destination2,
+            2 => this.Destination3,
+            3 => this.Destination4,
+            4 => this.Destination5,
+            5 => this.Destination6,
+            6 => this.Destination7,
+            7 => this.Destination8,
+            8 => this.Destination9,
+            _ => throw new InvalidOperationException($"Unsupported destination slot {slotIndex}.")
+        };
+    }
+
+    /// <summary>Get all configured destination hotkeys.</summary>
+    public IEnumerable<KeyCode> GetDestinationKeys()
+    {
+        for (int i = 0; i < MaxLegacyDestinationKeys; i++)
+            yield return this.GetDestinationKey(i);
+    }
 }

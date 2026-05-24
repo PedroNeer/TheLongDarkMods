@@ -2,6 +2,10 @@
 
 # Release notes
 ## Upcoming release
+* Added support for any number of saved destinations.
+* Added an interactive destination list for choosing, deleting, and rebinding saved destinations.
+* Changed destination hotkeys into shortcuts. Saving to a hotkey now adds a new destination instead of replacing the previous one.
+* Added automatic migration from legacy fixed-slot save data.
 * Fixed wrong region name shown on-screen after fast traveling across regions.
 * Fixed destination list showing redundant region-in-region label for outdoor destinations.
 
