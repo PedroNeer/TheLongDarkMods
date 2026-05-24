@@ -236,6 +236,18 @@ internal class DestinationListOverlay : MonoBehaviour
             return;
         }
 
+        if (input.IsKeyJustPressed(KeyCode.RightArrow))
+        {
+            this.BeginRename();
+            return;
+        }
+
+        if (input.IsKeyJustPressed(KeyCode.LeftArrow))
+        {
+            this.ChangeUiScale();
+            return;
+        }
+
         int quickIndex = this.GetPressedQuickIndex(input);
         if (quickIndex >= 0 && quickIndex < this.Entries.Count)
         {
@@ -252,7 +264,6 @@ internal class DestinationListOverlay : MonoBehaviour
         if (!this.IsVisible)
             return;
 
-        Event evt = Event.current;
         this.InitializeStyles();
 
         float margin = this.Scale(40f);
@@ -291,7 +302,6 @@ internal class DestinationListOverlay : MonoBehaviour
                 string row = $"{selector} {i + 1}. [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
 
                 GUILayout.Label(row, isSelected ? this.SelectedRowStyle : this.RowStyle);
-                this.HandleRowMouse(evt, GUILayoutUtility.GetLastRect(), i);
             }
         }
 
@@ -315,14 +325,15 @@ internal class DestinationListOverlay : MonoBehaviour
         }
         else
         {
-            string help = this.IsRebinding
-                ? "按一个已配置的目的地快捷键完成绑定，或按 Esc 取消。"
-                : "上/下选择  Enter旅行  右键改名  左键切换字号  保存键改绑  删除键删除  Esc关闭";
-            GUILayout.Label(help, this.HelpStyle);
+            if (this.IsRebinding)
+                this.DrawHintRow("1-9 绑定", "Esc 取消");
+            else
+            {
+                this.DrawHintRow("↑↓ 选择", "Enter 前往", "→ 改名", "← 字号");
+                this.DrawHintRow("+ 改绑", "-/Del 删除", "Esc 关闭");
+            }
         }
         GUILayout.EndArea();
-
-        this.HandleOverlayMouse(evt, box);
     }
 
 
@@ -388,31 +399,34 @@ internal class DestinationListOverlay : MonoBehaviour
         return (int)Math.Round(value * this.UiScale);
     }
 
-    /// <summary>Handle a mouse click on the overlay background.</summary>
-    /// <param name="evt">The current GUI event.</param>
-    /// <param name="box">The overlay bounds.</param>
-    private void HandleOverlayMouse(Event evt, Rect box)
+    /// <summary>Move to the next UI scale step.</summary>
+    private void ChangeUiScale()
     {
-        if (this.IsRenaming || evt.type != EventType.MouseDown || evt.button != 0 || !box.Contains(evt.mousePosition))
-            return;
-
         this.UiScaleIndex = (this.UiScaleIndex + 1) % UiScaleSteps.Length;
-        this.TitleStyle = null;
-        evt.Use();
+        this.ResetStyles();
     }
 
-    /// <summary>Handle a mouse click on a destination row.</summary>
-    /// <param name="evt">The current GUI event.</param>
-    /// <param name="rowRect">The row bounds.</param>
-    /// <param name="rowIndex">The row index.</param>
-    private void HandleRowMouse(Event evt, Rect rowRect, int rowIndex)
+    /// <summary>Reset cached GUI styles so they're recreated with the current scale.</summary>
+    private void ResetStyles()
     {
-        if (this.IsRenaming || evt.type != EventType.MouseDown || evt.button != 1 || !rowRect.Contains(evt.mousePosition))
-            return;
+        this.TitleStyle = null;
+        this.RowStyle = null;
+        this.SelectedRowStyle = null;
+        this.HelpStyle = null;
+        this.TextFieldStyle = null;
+    }
 
-        this.SelectedIndex = rowIndex;
-        this.BeginRename();
-        evt.Use();
+    /// <summary>Draw a row of concise shortcut hints.</summary>
+    /// <param name="hints">The hints to show.</param>
+    private void DrawHintRow(params string[] hints)
+    {
+        GUILayout.BeginHorizontal();
+        foreach (string hint in hints)
+        {
+            GUILayout.Label(hint, this.HelpStyle, GUILayout.ExpandWidth(false));
+            GUILayout.Space(this.Scale(18f));
+        }
+        GUILayout.EndHorizontal();
     }
 
     /// <summary>Start renaming the selected destination.</summary>

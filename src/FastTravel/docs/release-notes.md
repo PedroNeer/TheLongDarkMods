@@ -5,7 +5,7 @@
 * Added support for any number of saved destinations.
 * Added an interactive destination list for choosing, renaming, deleting, and rebinding saved destinations.
 * Changed destination hotkeys into shortcuts. Saving to a hotkey now adds a new destination and leaves the previous destination in the list.
-* Added click-to-cycle text scaling to the destination list for high-resolution displays.
+* Added keyboard-controlled text scaling to the destination list for high-resolution displays.
 * Added automatic migration from legacy fixed-slot save data.
 * Fixed wrong region name shown on-screen after fast traveling across regions.
 * Fixed destination list showing redundant region-in-region label for outdoor destinations.

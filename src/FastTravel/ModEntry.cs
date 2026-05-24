@@ -67,19 +67,22 @@ public class ModEntry : MelonMod
         if (this.DestinationListOverlay.IsVisible && !SceneHelper.IsSaveLoaded())
             this.DestinationListOverlay.Hide();
 
-        // handle key presses
-        if (InputManager.HasPressedKey() && SceneHelper.IsSaveLoaded())
+        if (!SceneHelper.IsSaveLoaded())
+            return;
+
+        if (this.DestinationListOverlay.IsVisible)
         {
-            if (this.DestinationListOverlay.IsVisible)
-            {
-                if (this.InteractionHelper.IsKeyJustPressed(this.Config.ShowListKey))
-                    this.DestinationListOverlay.Hide();
-                else
-                    this.DestinationListOverlay.HandleInput(this.InteractionHelper, this.Config);
+            if (this.InteractionHelper.IsKeyJustPressed(this.Config.ShowListKey))
+                this.DestinationListOverlay.Hide();
+            else
+                this.DestinationListOverlay.HandleInput(this.InteractionHelper, this.Config);
 
-                return;
-            }
+            return;
+        }
 
+        // handle key presses
+        if (InputManager.HasPressedKey())
+        {
             // toggle overlay
             if (this.InteractionHelper.IsKeyJustPressed(this.Config.ShowListKey))
                 this.ShowDestinationList(this.DestinationManager.GetData());
