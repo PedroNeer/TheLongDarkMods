@@ -103,39 +103,39 @@ internal class ModConfig : JsonModSettings
     public KeyCode ShowListKey = KeyCode.KeypadPeriod;
 
     [Name("Fast travel point 1")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination1 = KeyCode.Keypad1;
 
     [Name("Fast travel point 2")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination2 = KeyCode.Keypad2;
 
     [Name("Fast travel point 3")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination3 = KeyCode.Keypad3;
 
     [Name("Fast travel point 4")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination4 = KeyCode.Keypad4;
 
     [Name("Fast travel point 5")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination5 = KeyCode.Keypad5;
 
     [Name("Fast travel point 6")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination6 = KeyCode.Keypad6;
 
     [Name("Fast travel point 7")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination7 = KeyCode.Keypad7;
 
     [Name("Fast travel point 8")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination8 = KeyCode.Keypad8;
 
     [Name("Fast travel point 9")]
-    [Description("Press this button to fast travel to destinations bound to this key. You can add or change bindings using the modifier keys above.")]
+    [Description("Press this button to fast travel to the destination bound to this key. You can add or change bindings using the modifier keys above.")]
     public KeyCode Destination9 = KeyCode.Keypad9;
 
     [Name("Return to previous location")]

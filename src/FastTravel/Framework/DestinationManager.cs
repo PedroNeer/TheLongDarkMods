@@ -139,6 +139,17 @@ internal class DestinationManager
             if (string.IsNullOrWhiteSpace(entry.Id))
                 entry.Id = System.Guid.NewGuid().ToString("N");
         }
+
+        HashSet<KeyCode> usedHotkeys = [];
+        for (int i = data.Destinations.Count - 1; i >= 0; i--)
+        {
+            DestinationEntry entry = data.Destinations[i];
+            if (entry.Hotkey == KeyCode.None)
+                continue;
+
+            if (!usedHotkeys.Add(entry.Hotkey))
+                entry.Hotkey = KeyCode.None;
+        }
     }
 
     /// <summary>Migrate legacy fixed-slot save data to the destination list model.</summary>

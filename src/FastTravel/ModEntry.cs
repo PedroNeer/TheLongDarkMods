@@ -166,7 +166,7 @@ public class ModEntry : MelonMod
     /*********
     ** Private methods
     *********/
-    /// <summary>Delete destinations bound to a hotkey with player interaction.</summary>
+    /// <summary>Delete the destination bound to a hotkey with player interaction.</summary>
     /// <param name="hotkey">The destination hotkey.</param>
     private void InteractivelyDelete(KeyCode hotkey)
     {
@@ -177,15 +177,12 @@ public class ModEntry : MelonMod
         }
 
         SaveModel data = this.DestinationManager.GetData();
-        DestinationEntry[] matches = data.GetByHotkey(hotkey).ToArray();
+        DestinationEntry? entry = data.GetByHotkey(hotkey);
 
-        if (matches.Length == 0)
+        if (entry is null)
             return; // nothing to delete
 
-        if (matches.Length == 1)
-            this.InteractivelyDelete(matches[0]);
-        else
-            this.ShowDestinationList(data, matches, $"Forget which destination bound to {hotkey}?", this.InteractivelyDelete);
+        this.InteractivelyDelete(entry);
     }
 
     /// <summary>Delete a destination with player interaction.</summary>
@@ -227,35 +224,37 @@ public class ModEntry : MelonMod
         // apply
         SaveModel data = this.DestinationManager.GetData();
         Destination here = this.DestinationManager.GetCurrentLocation();
-        int existingBindings = data.GetByHotkey(hotkey).Count();
+        DestinationEntry? oldEntry = data.GetByHotkey(hotkey);
 
         string question = $"Save {here.GetDisplayName()} as a new fast travel destination bound to {hotkey}?";
-        if (existingBindings > 0)
-            question += $"\n\nThis key already has {existingBindings} saved destination{(existingBindings == 1 ? "" : "s")}. The old destination{(existingBindings == 1 ? "" : "s")} will stay in your list.";
+        if (oldEntry is not null)
+            question += $"\n\nThis will replace the shortcut for {oldEntry.GetDisplayName()}. The old destination will stay in your list.";
 
         this.InteractionHelper.ShowConfirmDialogue(
             question,
             () =>
             {
-                data.Add(new DestinationEntry
+                DestinationEntry entry = new()
                 {
-                    Hotkey = hotkey,
                     Location = here
-                });
+                };
+
+                data.Add(entry);
+                data.BindHotkey(entry, hotkey);
                 this.DestinationManager.SaveData(data);
                 this.UpdateDestinationListIfVisible(data);
             }
         );
     }
 
-    /// <summary>Fast travel to destinations bound to a hotkey with player interaction.</summary>
+    /// <summary>Fast travel to the destination bound to a hotkey with player interaction.</summary>
     /// <param name="hotkey">The destination hotkey.</param>
     private void InteractivelyFastTravel(KeyCode hotkey)
     {
         SaveModel data = this.DestinationManager.GetData();
-        DestinationEntry[] matches = data.GetByHotkey(hotkey).ToArray();
+        DestinationEntry? entry = data.GetByHotkey(hotkey);
 
-        if (matches.Length == 0)
+        if (entry is null)
         {
             string message = $"You haven't saved any fast travel destinations bound to {hotkey} yet.";
             if (this.Config.ShowUsageHints)
@@ -265,10 +264,7 @@ public class ModEntry : MelonMod
             return;
         }
 
-        if (matches.Length == 1)
-            this.InteractivelyFastTravel(matches[0]);
-        else
-            this.ShowDestinationList(data, matches, $"Travel to which destination bound to {hotkey}?", this.InteractivelyFastTravel);
+        this.InteractivelyFastTravel(entry);
     }
 
     /// <summary>Fast travel to a saved destination with player interaction.</summary>
@@ -333,7 +329,7 @@ public class ModEntry : MelonMod
         if (savedEntry is null)
             return;
 
-        savedEntry.Hotkey = hotkey;
+        data.BindHotkey(savedEntry, hotkey);
         this.DestinationManager.SaveData(data);
         this.UpdateDestinationListIfVisible(data);
     }
