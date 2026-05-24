@@ -71,6 +71,29 @@ internal class InteractionHelper
         );
     }
 
+    /// <summary>Show a text input dialogue box which lets the player confirm or cancel.</summary>
+    /// <param name="question">The question text to display.</param>
+    /// <param name="initialText">The initial text in the input field.</param>
+    /// <param name="onConfirm">The action to perform with the input text when the player confirms.</param>
+    /// <param name="maxLength">The maximum input length.</param>
+    public void ShowTextInputDialogue(string question, string? initialText, Action<string> onConfirm, int maxLength = 80)
+    {
+        if (!this.TryGetUnusedConfirmationPanel(out Panel_Confirmation? panel))
+            return;
+
+        if (maxLength > 0)
+            panel.m_GenericMessageGroup.m_InputField.m_MaxLength = maxLength;
+
+        panel.ShowRenamePanel(
+            question,
+            "Yes",
+            "No",
+            initialText ?? "",
+            () => onConfirm(panel.InputFieldGetText()),
+            null
+        );
+    }
+
 
     /*********
     ** Private methods
