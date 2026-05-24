@@ -82,14 +82,14 @@ internal class InteractionHelper
             return;
 
         if (maxLength > 0)
-            panel.m_GenericMessageGroup.m_InputField.m_MaxLength = maxLength;
+            panel.m_GenericMessageGroup.m_InputField.m_MaxLength = (uint)maxLength;
 
         panel.ShowRenamePanel(
             question,
             "Yes",
             "No",
             initialText ?? "",
-            () => onConfirm(panel.InputFieldGetText()),
+            () => onConfirm(panel.m_GenericMessageGroup.m_InputField.GetText()),
             null
         );
     }
