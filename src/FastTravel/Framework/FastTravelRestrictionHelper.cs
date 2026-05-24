@@ -30,7 +30,7 @@ internal class FastTravelRestrictionHelper
     /// <param name="from">The scene from which the player would travel.</param>
     /// <param name="to">The scene in which the player would arrive.</param>
     /// <param name="data">The saved fast travel destinations.</param>
-    /// <param name="reasonPhrase">If fast travel is restricted, a phrase which can fit in the sentence <c>Can't fast travel {0}</c>.</param>
+    /// <param name="reasonPhrase">If fast travel is restricted, a phrase which can fit in the sentence <c>无法快速旅行{0}</c>.</param>
     /// <returns>Returns whether restrictions prohibit this fast travel.</returns>
     public bool IsAllowed(Destination from, Destination? to, SaveModel data, [NotNullWhen(false)] out string? reasonPhrase)
     {
@@ -40,42 +40,42 @@ internal class FastTravelRestrictionHelper
         // disabled
         if (!this.Config.CanTravel)
         {
-            reasonPhrase = "at all";
+            reasonPhrase = "，因为快速旅行已关闭";
             return false;
         }
 
         // from non-fast travel point
         if (!this.Config.CanTravelFromNonFastTravelPoint && data.Destinations.All(entry => entry.Location.Scene.Name != from.Scene.Name))
         {
-            reasonPhrase = "from a non-saved destination";
+            reasonPhrase = "，因为当前位置不是已保存目的地";
             return false;
         }
 
         // from outside
         if (!this.Config.CanTravelFromOutside && isFromOutside)
         {
-            reasonPhrase = "from outside";
+            reasonPhrase = "，因为你在室外";
             return false;
         }
 
         // from non-safehouse
         if (!this.Config.CanTravelFromNonSafehouseInterior && !isFromOutside && !SceneHelper.IsCustomizableSafehouse())
         {
-            reasonPhrase = "from non-safehouse interior";
+            reasonPhrase = "，因为当前位置是非安全屋室内";
             return false;
         }
 
         // from within scene
         if (!this.Config.CanTravelWithinScene && isSameScene)
         {
-            reasonPhrase = "to the same location";
+            reasonPhrase = "，因为目标在同一场景";
             return false;
         }
 
         // under attack
         if (!this.Config.CanTravelWhileUnderAttack && this.IsAnyAnimalHostile())
         {
-            reasonPhrase = "while under attack";
+            reasonPhrase = "，因为你正受到攻击";
             return false;
         }
 
@@ -92,34 +92,34 @@ internal class FastTravelRestrictionHelper
     ** Private methods
     *********/
     /// <summary>Get whether the player can travel during the current weather in their departure region.</summary>
-    /// <param name="reasonPhrase">If fast travel is restricted, a phrase which can fit in the sentence <c>Can't fast travel {0}</c>.</param>
+    /// <param name="reasonPhrase">If fast travel is restricted, a phrase which can fit in the sentence <c>无法快速旅行{0}</c>.</param>
     /// <returns>Returns whether travel is allowed.</returns>
     private bool CanTravelDuringWeather([NotNullWhen(false)] out string? reasonPhrase)
     {
         switch (GameManager.GetWeatherComponent().GetWeatherStage())
         {
             case WeatherStage.ClearAurora:
-                reasonPhrase = "during an aurora";
+                reasonPhrase = "，因为当前是极光";
                 return this.Config.CanTravelDuringAurora;
 
             case WeatherStage.DenseFog:
-                reasonPhrase = "during dense fog";
+                reasonPhrase = "，因为当前有浓雾";
                 return this.Config.CanTravelDuringDenseFog;
 
             case WeatherStage.ElectrostaticFog:
-                reasonPhrase = "during glimmer fog";
+                reasonPhrase = "，因为当前有闪光雾";
                 return this.Config.CanTravelDuringGlimmerFog;
 
             case WeatherStage.LightSnow:
-                reasonPhrase = "during light snowfall";
+                reasonPhrase = "，因为当前有小雪";
                 return this.Config.CanTravelDuringLightSnowfall;
 
             case WeatherStage.HeavySnow:
-                reasonPhrase = "during heavy snowfall";
+                reasonPhrase = "，因为当前有大雪";
                 return this.Config.CanTravelDuringHeavySnowfall;
 
             case WeatherStage.Blizzard:
-                reasonPhrase = "during a blizzard";
+                reasonPhrase = "，因为当前是暴风雪";
                 return this.Config.CanTravelDuringBlizzard;
 
             default:

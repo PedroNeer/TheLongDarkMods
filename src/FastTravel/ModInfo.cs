@@ -4,7 +4,7 @@ namespace Pathoschild.TheLongDarkMods.FastTravel;
 internal class ModInfo
 {
     /// <summary>The human-readable display name for the mod.</summary>
-    public const string DisplayName = "Fast Travel";
+    public const string DisplayName = "快速旅行";
 
     /// <summary>The semantic version for the mod.</summary>
     /// <remarks>This affects both the MelonLoader mod version and DLL version.</remarks>
@@ -18,7 +18,7 @@ internal class ModInfo
     public const string Author = "Pathoschild";
 
     /// <summary>A short human-readable description of the mod.</summary>
-    public const string Description = "Lets you save places (like your home base), and fast travel to them anytime through a destination list or shortcut key.";
+    public const string Description = "保存地点（例如基地），之后可通过目的地列表或快捷键随时快速旅行。";
 
     /// <summary>The URL of the page where the player can find the mod.</summary>
     public const string DownloadLink = "https://www.nexusmods.com/thelongdark/mods/54";

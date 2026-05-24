@@ -113,7 +113,7 @@ internal class DestinationManager
                 }
                 catch (JsonException ex)
                 {
-                    this.Log.Error("Can't load saved destinations; the data will be reset.", ex);
+                    this.Log.Error("无法读取已保存的快速旅行目的地，数据将被重置。", ex);
                 }
             }
         }

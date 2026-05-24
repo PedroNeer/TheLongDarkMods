@@ -172,7 +172,7 @@ public class ModEntry : MelonMod
     {
         if (!this.Config.CanEditDestinations)
         {
-            this.Log.Warning("Can't edit fast travel destinations (per your mod settings).");
+            this.Log.Warning("无法编辑快速旅行目的地（已在模组设置中禁用）。");
             return;
         }
 
@@ -191,12 +191,12 @@ public class ModEntry : MelonMod
     {
         if (!this.Config.CanEditDestinations)
         {
-            this.Log.Warning("Can't edit fast travel destinations (per your mod settings).");
+            this.Log.Warning("无法编辑快速旅行目的地（已在模组设置中禁用）。");
             return;
         }
 
         this.InteractionHelper.ShowConfirmDialogue(
-            $"Do you want to forget {entry.GetDisplayName()}?",
+            $"要删除快速旅行目的地“{entry.GetDisplayName()}”吗？",
             () =>
             {
                 SaveModel data = this.DestinationManager.GetData();
@@ -217,7 +217,7 @@ public class ModEntry : MelonMod
         // check restriction
         if (!this.Config.CanEditDestinations)
         {
-            this.Log.Warning("Can't edit fast travel destinations (per your mod settings).");
+            this.Log.Warning("无法编辑快速旅行目的地（已在模组设置中禁用）。");
             return;
         }
 
@@ -226,9 +226,9 @@ public class ModEntry : MelonMod
         Destination here = this.DestinationManager.GetCurrentLocation();
         DestinationEntry? oldEntry = data.GetByHotkey(hotkey);
 
-        string question = $"Save {here.GetDisplayName()} as a new fast travel destination bound to {hotkey}?";
+        string question = $"将当前位置“{here.GetDisplayName()}”保存为新的快速旅行目的地，并绑定到 {this.FormatKey(hotkey)} 吗？";
         if (oldEntry is not null)
-            question += $"\n\nThis will replace the shortcut for {oldEntry.GetDisplayName()}. The old destination will stay in your list.";
+            question += $"\n\n这会覆盖快捷键 {this.FormatKey(hotkey)} 当前绑定的“{oldEntry.GetDisplayName()}”，把该快捷键替换到新目的地；旧目的地仍会保留在列表中。";
 
         this.InteractionHelper.ShowConfirmDialogue(
             question,
@@ -256,9 +256,9 @@ public class ModEntry : MelonMod
 
         if (entry is null)
         {
-            string message = $"You haven't saved any fast travel destinations bound to {hotkey} yet.";
+            string message = $"还没有保存任何绑定到 {this.FormatKey(hotkey)} 的快速旅行目的地。";
             if (this.Config.ShowUsageHints)
-                message += $"\n\nPress {this.Config.SaveModifierKey} + {hotkey} to save your current location with that key.";
+                message += $"\n\n按 {this.FormatKey(this.Config.SaveModifierKey)} + {this.FormatKey(hotkey)} 可将当前位置保存并绑定到该快捷键。";
 
             this.InteractionHelper.ShowMessageBox(message);
             return;
@@ -280,25 +280,25 @@ public class ModEntry : MelonMod
         // not set yet
         if (destination is null)
         {
-            this.InteractionHelper.ShowMessageBox("That fast travel destination no longer exists.");
+            this.InteractionHelper.ShowMessageBox("这个快速旅行目的地已经不存在。");
             return;
         }
 
         // check restrictions
         if (!this.FastTravelRestrictions.IsAllowed(here, destination, data, out string? reasonPhrase))
         {
-            this.Log.Warning($"Can't fast travel {reasonPhrase} (per your mod settings).");
+            this.Log.Warning($"无法快速旅行{reasonPhrase}（根据你的模组设置）。");
             return;
         }
 
         // else travel
-        string question = $"Travel to {destination.GetDisplayName()}?";
+        string question = $"前往“{destination.GetDisplayName()}”吗？";
         if (this.Config.ReturnPointKey != KeyCode.None && this.Config.ShowUsageHints)
         {
             if (returnPoint != null && returnPoint.Scene.Name != here.Scene.Name)
-                question += $"\n\nThis will replace your previous return point ({returnPoint.GetDisplayName()}).";
+                question += $"\n\n这会替换之前的返回点（{returnPoint.GetDisplayName()}）。";
 
-            question += $"\n\nYou can return here later by pressing {this.Config.ReturnPointKey}.";
+            question += $"\n\n之后可以按 {this.FormatKey(this.Config.ReturnPointKey)} 回到这里。";
         }
 
         this.InteractionHelper.ShowConfirmDialogue(
@@ -320,7 +320,7 @@ public class ModEntry : MelonMod
     {
         if (!this.Config.CanEditDestinations)
         {
-            this.Log.Warning("Can't edit fast travel destinations (per your mod settings).");
+            this.Log.Warning("无法编辑快速旅行目的地（已在模组设置中禁用）。");
             return;
         }
 
@@ -328,6 +328,35 @@ public class ModEntry : MelonMod
         DestinationEntry? savedEntry = data.Get(entry.Id);
         if (savedEntry is null)
             return;
+
+        DestinationEntry? oldEntry = data.GetByHotkey(hotkey);
+        if (oldEntry is not null && oldEntry.Id != savedEntry.Id)
+        {
+            this.DestinationListOverlay.Hide();
+            this.InteractionHelper.ShowConfirmDialogue(
+                $"要把快捷键 {this.FormatKey(hotkey)} 改绑到“{savedEntry.GetDisplayName()}”吗？\n\n这会覆盖当前绑定的“{oldEntry.GetDisplayName()}”；旧目的地仍会保留在列表中。",
+                () => this.ApplyHotkeyRebind(entry.Id, hotkey)
+            );
+            return;
+        }
+
+        data.BindHotkey(savedEntry, hotkey);
+        this.DestinationManager.SaveData(data);
+        this.UpdateDestinationListIfVisible(data);
+    }
+
+    /// <summary>Bind a destination entry to a hotkey, reloading the latest save data first.</summary>
+    /// <param name="entryId">The destination entry ID.</param>
+    /// <param name="hotkey">The hotkey to bind.</param>
+    private void ApplyHotkeyRebind(string entryId, KeyCode hotkey)
+    {
+        SaveModel data = this.DestinationManager.GetData();
+        DestinationEntry? savedEntry = data.Get(entryId);
+        if (savedEntry is null)
+        {
+            this.InteractionHelper.ShowMessageBox("这个快速旅行目的地已经不存在。");
+            return;
+        }
 
         data.BindHotkey(savedEntry, hotkey);
         this.DestinationManager.SaveData(data);
@@ -344,23 +373,23 @@ public class ModEntry : MelonMod
         // check restrictions
         if (!this.FastTravelRestrictions.IsAllowed(here, returnPoint, data, out string? reasonPhrase))
         {
-            this.Log.Warning($"Can't fast travel {reasonPhrase} (per your mod settings).");
+            this.Log.Warning($"无法快速旅行{reasonPhrase}（根据你的模组设置）。");
             return;
         }
 
         if (returnPoint is null)
         {
-            string message = "You haven't fast traveled anywhere yet.";
+            string message = "你还没有进行过快速旅行。";
             if (this.Config.ShowUsageHints)
-                message += $"\n\nAfter you fast travel at least once, you'll be able to return to your departure point by pressing {this.Config.ReturnPointKey}.";
+                message += $"\n\n第一次快速旅行后，可以按 {this.FormatKey(this.Config.ReturnPointKey)} 返回出发点。";
 
             this.InteractionHelper.ShowMessageBox(message);
             return;
         }
 
-        string question = $"Travel back to {returnPoint.GetDisplayName()}?";
+        string question = $"返回“{returnPoint.GetDisplayName()}”吗？";
         if (here.Scene.Name != returnPoint.Scene.Name)
-            question += $"\n\nThis will set {here.GetDisplayName()} as your new return point.";
+            question += $"\n\n这会把“{here.GetDisplayName()}”设为新的返回点。";
 
         this.InteractionHelper.ShowConfirmDialogue(
             question,
@@ -479,7 +508,7 @@ public class ModEntry : MelonMod
     private void ShowDestinationList(SaveModel data, IEnumerable<DestinationEntry>? entries = null, string? title = null, Action<DestinationEntry>? onSelect = null)
     {
         this.DestinationListOverlay.Show(
-            title ?? "Fast travel destinations",
+            title ?? "快速旅行目的地",
             entries ?? data.Destinations,
             data.ReturnPoint,
             this.Config.ReturnPointKey,
@@ -495,6 +524,15 @@ public class ModEntry : MelonMod
     {
         if (this.DestinationListOverlay.IsVisible)
             this.ShowDestinationList(data);
+    }
+
+    /// <summary>Get a player-facing key label.</summary>
+    /// <param name="key">The key to display.</param>
+    private string FormatKey(KeyCode key)
+    {
+        return key == KeyCode.None
+            ? "未绑定"
+            : key.ToString();
     }
 
     /// <summary>Get a debug log representation of a scene transition.</summary>
