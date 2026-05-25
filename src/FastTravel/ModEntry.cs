@@ -8,6 +8,7 @@ using Pathoschild.TheLongDarkMods.FastTravel.Framework;
 using Pathoschild.TheLongDarkMods.FastTravel.Framework.DataModels;
 using Pathoschild.TheLongDarkMods.FastTravel.Framework.Patches;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Pathoschild.TheLongDarkMods.FastTravel;
 
@@ -17,6 +18,13 @@ public class ModEntry : MelonMod
     /*********
     ** Fields
     *********/
+    /// <summary>The furthest map landmark to use for generated destination names.</summary>
+    private const float MaxGeneratedNameLandmarkDistance = 250f;
+
+    /// <summary>The distance within which the destination is considered to be at a map landmark.</summary>
+    private const float LandmarkNameOnlyDistance = 50f;
+
+
     /// <summary>The mod settings.</summary>
     private readonly ModConfig Config = new();
 
@@ -228,8 +236,9 @@ public class ModEntry : MelonMod
         SaveModel data = this.DestinationManager.GetData();
         Destination here = this.DestinationManager.GetCurrentLocation();
         DestinationEntry? oldEntry = data.GetByHotkey(hotkey);
+        string autoName = this.GetAutoDestinationName(here);
 
-        string question = $"将当前位置“{here.GetDisplayName()}”保存为新的快速旅行目的地，并绑定到 {this.FormatKey(hotkey)} 吗？";
+        string question = $"将当前位置保存为“{autoName}”，并绑定到 {this.FormatKey(hotkey)} 吗？";
         if (oldEntry is not null)
             question += $"\n\n这会覆盖快捷键 {this.FormatKey(hotkey)} 当前绑定的“{oldEntry.GetDisplayName()}”，把该快捷键替换到新目的地；旧目的地仍会保留在列表中。";
 
@@ -239,6 +248,7 @@ public class ModEntry : MelonMod
             {
                 DestinationEntry entry = new()
                 {
+                    AutoName = autoName,
                     Location = here
                 };
 
@@ -295,7 +305,7 @@ public class ModEntry : MelonMod
         }
 
         // else travel
-        string question = $"前往“{destination.GetDisplayName()}”吗？";
+        string question = $"前往“{savedEntry.GetDisplayName()}”吗？";
         if (this.Config.ReturnPointKey != KeyCode.None && this.Config.ShowUsageHints)
         {
             if (returnPoint != null && returnPoint.Scene.Name != here.Scene.Name)
@@ -615,6 +625,254 @@ public class ModEntry : MelonMod
     {
         if (this.DestinationListOverlay.IsVisible)
             this.ShowDestinationList(data);
+    }
+
+    /// <summary>Generate a default player-facing name for a saved destination.</summary>
+    /// <param name="destination">The destination to name.</param>
+    private string GetAutoDestinationName(Destination destination)
+    {
+        string regionName = this.GetRegionDisplayName(destination);
+        Vector3 position = destination.Position.ToVector3();
+
+        if (this.TryGetNearestMapDetailName(position, out string? landmarkName, out Vector3 landmarkPosition, out float landmarkDistance))
+        {
+            string locationName = landmarkDistance <= LandmarkNameOnlyDistance
+                ? landmarkName
+                : $"{landmarkName}{this.GetDirectionFrom(landmarkPosition, position)} {Mathf.RoundToInt(landmarkDistance)}m";
+
+            return this.FormatRegionLocationName(regionName, locationName);
+        }
+
+        string sceneName = destination.GetDisplayName();
+        if (!string.IsNullOrWhiteSpace(sceneName) && !string.Equals(sceneName, regionName, StringComparison.Ordinal))
+            return this.FormatRegionLocationName(regionName, sceneName);
+
+        return !string.IsNullOrWhiteSpace(regionName)
+            ? $"{regionName}-{Mathf.RoundToInt(destination.Position.X)},{Mathf.RoundToInt(destination.Position.Z)}"
+            : destination.GetDisplayName(showRegion: true);
+    }
+
+    /// <summary>Get the localized region name for a destination.</summary>
+    /// <param name="destination">The destination whose region to name.</param>
+    private string GetRegionDisplayName(Destination destination)
+    {
+        if (destination.Region is not null)
+        {
+            string regionName = this.GetLocalizedText(destination.Region.NameLocalizationId);
+            if (!string.IsNullOrWhiteSpace(regionName) && regionName != destination.Region.NameLocalizationId)
+                return regionName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(destination.Region.Name))
+                return destination.Region.Name.Trim();
+        }
+
+        return destination.GetDisplayName(showRegion: true);
+    }
+
+    /// <summary>Get the nearest useful map landmark name for a world position.</summary>
+    /// <param name="position">The world position.</param>
+    /// <param name="name">The landmark name, if found.</param>
+    /// <param name="landmarkPosition">The landmark world position, if found.</param>
+    /// <param name="distance">The horizontal distance from the landmark, if found.</param>
+    private bool TryGetNearestMapDetailName(Vector3 position, out string? name, out Vector3 landmarkPosition, out float distance)
+    {
+        name = null;
+        landmarkPosition = Vector3.zero;
+        distance = 0f;
+
+        float bestScore = float.MaxValue;
+        try
+        {
+            foreach (MapDetail detail in Object.FindObjectsOfType<MapDetail>())
+            {
+                if (detail is null || !this.TryGetMapDetailDisplayName(detail, out string? detailName))
+                    continue;
+
+                Vector3 detailPosition;
+                try
+                {
+                    detailPosition = detail.GetWorldPosition();
+                }
+                catch
+                {
+                    detailPosition = detail.transform.position;
+                }
+
+                float detailDistance = this.GetHorizontalDistance(position, detailPosition);
+                if (detailDistance > MaxGeneratedNameLandmarkDistance)
+                    continue;
+
+                float score = detailDistance + (this.IsPreferredMapDetail(detail) ? 0f : MaxGeneratedNameLandmarkDistance);
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    name = detailName;
+                    landmarkPosition = detailPosition;
+                    distance = detailDistance;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (this.Config.LogDebugInfo)
+                this.Log.Warning($"无法扫描地图地点名称：{ex.Message}");
+
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(name);
+    }
+
+    /// <summary>Get the horizontal distance between two world positions.</summary>
+    /// <param name="from">The first world position.</param>
+    /// <param name="to">The second world position.</param>
+    private float GetHorizontalDistance(Vector3 from, Vector3 to)
+    {
+        float x = to.x - from.x;
+        float z = to.z - from.z;
+
+        return Mathf.Sqrt((x * x) + (z * z));
+    }
+
+    /// <summary>Get the eight-way direction from one world position to another.</summary>
+    /// <param name="from">The origin world position.</param>
+    /// <param name="to">The target world position.</param>
+    private string GetDirectionFrom(Vector3 from, Vector3 to)
+    {
+        Vector2 offset = new(to.x - from.x, to.z - from.z);
+        if (offset.sqrMagnitude < 0.01f)
+            return "";
+
+        float angle = Mathf.Atan2(offset.x, offset.y) * Mathf.Rad2Deg;
+        if (angle < 0)
+            angle += 360f;
+
+        string[] directions =
+        [
+            "北",
+            "东北",
+            "东",
+            "东南",
+            "南",
+            "西南",
+            "西",
+            "西北"
+        ];
+
+        int index = Mathf.RoundToInt(angle / 45f) % directions.Length;
+        return directions[index];
+    }
+
+    /// <summary>Get the localized display name for a map detail if it's useful for destination naming.</summary>
+    /// <param name="detail">The map detail.</param>
+    /// <param name="name">The localized name, if found.</param>
+    private bool TryGetMapDetailDisplayName(MapDetail detail, out string? name)
+    {
+        name = null;
+
+        string locId = detail.m_LocID;
+        if (string.IsNullOrWhiteSpace(locId))
+            return false;
+
+        string localizedName = this.GetLocalizedText(locId);
+        if (string.IsNullOrWhiteSpace(localizedName))
+            return false;
+
+        localizedName = localizedName.Trim();
+        if (localizedName == locId && locId.Contains('_'))
+            return false;
+
+        if (this.IsIgnoredMapDetail(detail, locId, localizedName))
+            return false;
+
+        name = localizedName;
+        return true;
+    }
+
+    /// <summary>Get whether a map detail is likely to be a named place rather than a resource detail.</summary>
+    /// <param name="detail">The map detail.</param>
+    private bool IsPreferredMapDetail(MapDetail detail)
+    {
+        return detail.m_IconType is MapIcon.MapIconType.TopIcon or MapIcon.MapIconType.Text or MapIcon.MapIconType.Area;
+    }
+
+    /// <summary>Get whether a map detail should be ignored for generated destination names.</summary>
+    /// <param name="detail">The map detail.</param>
+    /// <param name="locId">The map detail localization ID.</param>
+    /// <param name="localizedName">The localized map detail name.</param>
+    private bool IsIgnoredMapDetail(MapDetail detail, string locId, string localizedName)
+    {
+        string value = $"{locId} {localizedName} {detail.m_SpriteName}".ToLowerInvariant();
+        string[] ignoredTerms =
+        [
+            "spray",
+            "rockcache",
+            "rock cache",
+            "corpse",
+            "carcass",
+            "harvest",
+            "reishi",
+            "rosehip",
+            "rose hip",
+            "cattail",
+            "sapling",
+            "cedar",
+            "fir",
+            "birch",
+            "maple",
+            "stick",
+            "limb",
+            "coal",
+            "acorn",
+            "lichen",
+            "mushroom",
+            "resource"
+        ];
+
+        return ignoredTerms.Any(value.Contains);
+    }
+
+    /// <summary>Get localized text for a localization ID, or the ID if localization fails.</summary>
+    /// <param name="locId">The localization ID.</param>
+    private string GetLocalizedText(string locId)
+    {
+        try
+        {
+            return Localization.Get(locId);
+        }
+        catch (Exception ex)
+        {
+            if (this.Config.LogDebugInfo)
+                this.Log.Warning($"无法读取本地化文本“{locId}”：{ex.Message}");
+
+            return locId;
+        }
+    }
+
+    /// <summary>Join a region and local landmark name into the generated destination naming format.</summary>
+    /// <param name="regionName">The localized region name.</param>
+    /// <param name="locationName">The localized location name.</param>
+    private string FormatRegionLocationName(string regionName, string locationName)
+    {
+        regionName = regionName.Trim();
+        locationName = locationName.Trim();
+
+        if (string.IsNullOrWhiteSpace(regionName))
+            return locationName;
+
+        if (string.IsNullOrWhiteSpace(locationName) || string.Equals(regionName, locationName, StringComparison.Ordinal))
+            return regionName;
+
+        if (locationName.StartsWith(regionName, StringComparison.Ordinal))
+        {
+            string suffix = locationName.Substring(regionName.Length).TrimStart(' ', '-', '：', ':', '（', '(');
+            if (!string.IsNullOrWhiteSpace(suffix))
+                return $"{regionName}-{suffix}";
+
+            return regionName;
+        }
+
+        return $"{regionName}-{locationName}";
     }
 
     /// <summary>Get a player-facing key label.</summary>

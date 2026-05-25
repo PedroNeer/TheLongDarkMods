@@ -256,11 +256,15 @@ internal class DestinationListOverlay : MonoBehaviour
         }
 
         int quickIndex = this.GetPressedQuickIndex(input);
-        if (quickIndex >= 0 && quickIndex < this.Entries.Count)
+        if (quickIndex >= 0)
         {
-            this.SelectedIndex = quickIndex;
+            int visibleIndex = this.GetFirstVisibleIndex(this.GetVisibleRowsPerColumn(this.GetOverlayHeight())) + quickIndex;
+            if (visibleIndex >= this.Entries.Count)
+                return;
+
+            this.SelectedIndex = visibleIndex;
             this.Hide();
-            this.OnSelect?.Invoke(this.Entries[quickIndex]);
+            this.OnSelect?.Invoke(this.Entries[visibleIndex]);
         }
     }
 
