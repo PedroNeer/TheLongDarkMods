@@ -317,7 +317,7 @@ internal class DestinationListOverlay : MonoBehaviour
         if (this.IsRebinding)
             this.DrawHintRow("1-9 绑定", "Esc 取消");
         else
-            this.DrawHintRow("↑↓选择", "PgUp/Dn翻页", "Enter前往", "→改名", "←字号", "+改绑", "-删除", "Esc关");
+            this.DrawHintRow("↑↓选择", "1-9当前页", "PgUp/Dn翻页", "Enter前往", "→改名", "←字号", "+改绑", "-删除", "Esc关");
         GUILayout.EndArea();
     }
 
@@ -388,7 +388,9 @@ internal class DestinationListOverlay : MonoBehaviour
                 DestinationEntry entry = this.Entries[entryIndex];
                 bool isSelected = entryIndex == this.SelectedIndex;
                 string selector = isSelected ? ">" : " ";
-                string row = $"{selector} {entryIndex + 1}. [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
+                int indexOnPage = entryIndex - startIndex;
+                string quickSelect = indexOnPage < 9 ? $"{indexOnPage + 1})" : "  ";
+                string row = $"{selector} {quickSelect} #{entryIndex + 1} [{this.FormatHotkey(entry.Hotkey)}] {entry.GetDisplayName(showRegion: true)}";
 
                 GUILayout.Label(row, isSelected ? this.SelectedRowStyle : this.RowStyle, GUILayout.Width(columnWidth));
             }
