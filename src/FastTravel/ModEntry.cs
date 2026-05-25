@@ -21,6 +21,9 @@ public class ModEntry : MelonMod
     /// <summary>The furthest map landmark to use for generated destination names.</summary>
     private const float MaxGeneratedNameLandmarkDistance = 250f;
 
+    /// <summary>The distance within which the destination is considered to be at a map landmark.</summary>
+    private const float LandmarkNameOnlyDistance = 50f;
+
 
     /// <summary>The mod settings.</summary>
     private readonly ModConfig Config = new();
@@ -629,9 +632,16 @@ public class ModEntry : MelonMod
     private string GetAutoDestinationName(Destination destination)
     {
         string regionName = this.GetRegionDisplayName(destination);
+        Vector3 position = destination.Position.ToVector3();
 
-        if (this.TryGetNearestMapDetailName(destination.Position.ToVector3(), out string? landmarkName))
-            return this.FormatRegionLocationName(regionName, landmarkName);
+        if (this.TryGetNearestMapDetailName(position, out string? landmarkName, out Vector3 landmarkPosition, out float landmarkDistance))
+        {
+            string locationName = landmarkDistance <= LandmarkNameOnlyDistance
+                ? landmarkName
+                : $"{landmarkName}{this.GetDirectionFrom(landmarkPosition, position)} {Mathf.RoundToInt(landmarkDistance)}m";
+
+            return this.FormatRegionLocationName(regionName, locationName);
+        }
 
         string sceneName = destination.GetDisplayName();
         if (!string.IsNullOrWhiteSpace(sceneName) && !string.Equals(sceneName, regionName, StringComparison.Ordinal))
@@ -662,9 +672,13 @@ public class ModEntry : MelonMod
     /// <summary>Get the nearest useful map landmark name for a world position.</summary>
     /// <param name="position">The world position.</param>
     /// <param name="name">The landmark name, if found.</param>
-    private bool TryGetNearestMapDetailName(Vector3 position, out string? name)
+    /// <param name="landmarkPosition">The landmark world position, if found.</param>
+    /// <param name="distance">The horizontal distance from the landmark, if found.</param>
+    private bool TryGetNearestMapDetailName(Vector3 position, out string? name, out Vector3 landmarkPosition, out float distance)
     {
         name = null;
+        landmarkPosition = Vector3.zero;
+        distance = 0f;
 
         float bestScore = float.MaxValue;
         try
@@ -684,15 +698,17 @@ public class ModEntry : MelonMod
                     detailPosition = detail.transform.position;
                 }
 
-                float distance = Vector3.Distance(position, detailPosition);
-                if (distance > MaxGeneratedNameLandmarkDistance)
+                float detailDistance = this.GetHorizontalDistance(position, detailPosition);
+                if (detailDistance > MaxGeneratedNameLandmarkDistance)
                     continue;
 
-                float score = distance + (this.IsPreferredMapDetail(detail) ? 0f : MaxGeneratedNameLandmarkDistance);
+                float score = detailDistance + (this.IsPreferredMapDetail(detail) ? 0f : MaxGeneratedNameLandmarkDistance);
                 if (score < bestScore)
                 {
                     bestScore = score;
                     name = detailName;
+                    landmarkPosition = detailPosition;
+                    distance = detailDistance;
                 }
             }
         }
@@ -705,6 +721,46 @@ public class ModEntry : MelonMod
         }
 
         return !string.IsNullOrWhiteSpace(name);
+    }
+
+    /// <summary>Get the horizontal distance between two world positions.</summary>
+    /// <param name="from">The first world position.</param>
+    /// <param name="to">The second world position.</param>
+    private float GetHorizontalDistance(Vector3 from, Vector3 to)
+    {
+        float x = to.x - from.x;
+        float z = to.z - from.z;
+
+        return Mathf.Sqrt((x * x) + (z * z));
+    }
+
+    /// <summary>Get the eight-way direction from one world position to another.</summary>
+    /// <param name="from">The origin world position.</param>
+    /// <param name="to">The target world position.</param>
+    private string GetDirectionFrom(Vector3 from, Vector3 to)
+    {
+        Vector2 offset = new(to.x - from.x, to.z - from.z);
+        if (offset.sqrMagnitude < 0.01f)
+            return "";
+
+        float angle = Mathf.Atan2(offset.x, offset.y) * Mathf.Rad2Deg;
+        if (angle < 0)
+            angle += 360f;
+
+        string[] directions =
+        [
+            "北",
+            "东北",
+            "东",
+            "东南",
+            "南",
+            "西南",
+            "西",
+            "西北"
+        ];
+
+        int index = Mathf.RoundToInt(angle / 45f) % directions.Length;
+        return directions[index];
     }
 
     /// <summary>Get the localized display name for a map detail if it's useful for destination naming.</summary>
