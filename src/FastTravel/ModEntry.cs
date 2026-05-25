@@ -305,7 +305,7 @@ public class ModEntry : MelonMod
         }
 
         // else travel
-        string question = $"前往“{destination.GetDisplayName()}”吗？";
+        string question = $"前往“{savedEntry.GetDisplayName()}”吗？";
         if (this.Config.ReturnPointKey != KeyCode.None && this.Config.ShowUsageHints)
         {
             if (returnPoint != null && returnPoint.Scene.Name != here.Scene.Name)
