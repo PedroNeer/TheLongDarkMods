@@ -18,6 +18,9 @@ internal class DestinationEntry
     /// <summary>The custom player-facing name, if set.</summary>
     public string? CustomName { get; set; }
 
+    /// <summary>The generated player-facing name, if set.</summary>
+    public string? AutoName { get; set; }
+
     /// <summary>The saved location.</summary>
     public Destination Location { get; set; } = null!;
 
@@ -29,8 +32,12 @@ internal class DestinationEntry
     /// <param name="showRegion">Whether to include the region name, or <c>null</c> to show it if different from the player's current region.</param>
     public string GetDisplayName(bool? showRegion = false)
     {
-        return !string.IsNullOrWhiteSpace(this.CustomName)
-            ? this.CustomName
-            : this.Location.GetDisplayName(showRegion);
+        if (!string.IsNullOrWhiteSpace(this.CustomName))
+            return this.CustomName;
+
+        if (!string.IsNullOrWhiteSpace(this.AutoName))
+            return this.AutoName;
+
+        return this.Location.GetDisplayName(showRegion);
     }
 }
