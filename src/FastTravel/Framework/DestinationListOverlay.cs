@@ -32,10 +32,16 @@ internal class DestinationListOverlay : MonoBehaviour
     private const float ContentVerticalPadding = 28f;
 
     /// <summary>The estimated unscaled vertical space used by non-list labels, gaps, and shortcut hints.</summary>
-    private const float NonListContentHeight = 90f;
+    private const float NonListContentHeight = 112f;
+
+    /// <summary>The unscaled height of the title line.</summary>
+    private const float TitleLineHeight = 26f;
+
+    /// <summary>The unscaled height of one help or shortcut line.</summary>
+    private const float HelpLineHeight = 20f;
 
     /// <summary>The estimated unscaled height of one destination row.</summary>
-    private const float DestinationRowHeight = 19f;
+    private const float DestinationRowHeight = 20f;
 
     /// <summary>The entries shown in the list.</summary>
     private readonly List<DestinationEntry> Entries = [];
@@ -335,6 +341,7 @@ internal class DestinationListOverlay : MonoBehaviour
         {
             fontSize = this.ScaleFont(20),
             fontStyle = FontStyle.Bold,
+            fixedHeight = this.Scale(TitleLineHeight),
             normal = { textColor = Color.white }
         };
 
@@ -342,6 +349,7 @@ internal class DestinationListOverlay : MonoBehaviour
         {
             fontSize = this.ScaleFont(16),
             clipping = TextClipping.Clip,
+            fixedHeight = this.Scale(DestinationRowHeight),
             wordWrap = false,
             normal = { textColor = new Color(0.82f, 0.82f, 0.78f) }
         };
@@ -355,6 +363,7 @@ internal class DestinationListOverlay : MonoBehaviour
         this.HelpStyle = new GUIStyle(GUI.skin.label)
         {
             fontSize = this.ScaleFont(13),
+            fixedHeight = this.Scale(HelpLineHeight),
             normal = { textColor = new Color(0.72f, 0.72f, 0.68f) }
         };
 

@@ -24,6 +24,12 @@ public class ModEntry : MelonMod
     /// <summary>The distance within which the destination is considered to be at a map landmark.</summary>
     private const float LandmarkNameOnlyDistance = 50f;
 
+    /// <summary>The furthest map detail to include in the debug log.</summary>
+    private const float MaxLoggedMapDetailDistance = 500f;
+
+    /// <summary>The maximum number of nearby map details to include in the debug log.</summary>
+    private const int MaxLoggedMapDetails = 20;
+
 
     /// <summary>The mod settings.</summary>
     private readonly ModConfig Config = new();
@@ -633,8 +639,15 @@ public class ModEntry : MelonMod
     {
         string regionName = this.GetRegionDisplayName(destination);
         Vector3 position = destination.Position.ToVector3();
+        bool isOutdoors = SceneHelper.IsOutdoors(destination.Scene.Name);
 
-        if (this.TryGetNearestMapDetailName(position, out string? landmarkName, out Vector3 landmarkPosition, out float landmarkDistance))
+        if (this.Config.LogNearbyMapDetails)
+            this.LogNearbyMapDetails(destination, position, isOutdoors);
+
+        if (
+            isOutdoors
+            && this.TryGetNearestMapDetailName(position, out string? landmarkName, out Vector3 landmarkPosition, out float landmarkDistance)
+        )
         {
             string locationName = landmarkDistance <= LandmarkNameOnlyDistance
                 ? landmarkName
@@ -688,16 +701,7 @@ public class ModEntry : MelonMod
                 if (detail is null || !this.TryGetMapDetailDisplayName(detail, out string? detailName))
                     continue;
 
-                Vector3 detailPosition;
-                try
-                {
-                    detailPosition = detail.GetWorldPosition();
-                }
-                catch
-                {
-                    detailPosition = detail.transform.position;
-                }
-
+                Vector3 detailPosition = this.GetMapDetailPosition(detail);
                 float detailDistance = this.GetHorizontalDistance(position, detailPosition);
                 if (detailDistance > MaxGeneratedNameLandmarkDistance)
                     continue;
@@ -723,6 +727,79 @@ public class ModEntry : MelonMod
         return !string.IsNullOrWhiteSpace(name);
     }
 
+    /// <summary>Log nearby map details to help calibrate the generated destination naming rules.</summary>
+    /// <param name="destination">The destination being named.</param>
+    /// <param name="position">The destination world position.</param>
+    /// <param name="isOutdoors">Whether map details will be used for automatic naming.</param>
+    private void LogNearbyMapDetails(Destination destination, Vector3 position, bool isOutdoors)
+    {
+        try
+        {
+            List<MapDetailDebugInfo> candidates = [];
+            foreach (MapDetail detail in Object.FindObjectsOfType<MapDetail>())
+            {
+                if (detail is null)
+                    continue;
+
+                Vector3 detailPosition = this.GetMapDetailPosition(detail);
+                float detailDistance = this.GetHorizontalDistance(position, detailPosition);
+                if (detailDistance > MaxLoggedMapDetailDistance)
+                    continue;
+
+                string locId = detail.m_LocID ?? "";
+                string localizedName = "";
+                bool hasUsableName = false;
+                bool isIgnored = false;
+
+                if (!string.IsNullOrWhiteSpace(locId))
+                {
+                    localizedName = this.GetLocalizedText(locId).Trim();
+                    hasUsableName = !string.IsNullOrWhiteSpace(localizedName) && (localizedName != locId || !locId.Contains('_'));
+                    isIgnored = hasUsableName && this.IsIgnoredMapDetail(detail, locId, localizedName);
+                }
+
+                candidates.Add(new MapDetailDebugInfo(
+                    distance: detailDistance,
+                    position: detailPosition,
+                    locId: locId,
+                    localizedName: localizedName,
+                    spriteName: detail.m_SpriteName ?? "",
+                    iconType: detail.m_IconType.ToString(),
+                    isPreferred: this.IsPreferredMapDetail(detail),
+                    isEligible: hasUsableName && !isIgnored,
+                    isIgnored: isIgnored
+                ));
+            }
+
+            List<MapDetailDebugInfo> nearest = candidates
+                .OrderBy(candidate => candidate.Distance)
+                .Take(MaxLoggedMapDetails)
+                .ToList();
+
+            string rows = nearest.Count > 0
+                ? string.Join("\n", nearest.Select((candidate, index) =>
+                    $"    {index + 1}. {candidate.Distance:0}m [{candidate.IconType}] preferred={candidate.IsPreferred}, eligible={candidate.IsEligible}, ignored={candidate.IsIgnored}; name='{candidate.LocalizedName}', locId='{candidate.LocId}', sprite='{candidate.SpriteName}', pos={candidate.Position}"
+                ))
+                : "    <none>";
+
+            this.Log.Msg(
+                $"""
+                附近地图标记：
+                    scene: {destination.Scene.Name}
+                    display: {destination.GetDisplayName(showRegion: true)}
+                    position: {position}
+                    map details used for naming: {isOutdoors}
+                    showing: {nearest.Count}/{candidates.Count} within {MaxLoggedMapDetailDistance:0}m
+                {rows}
+                """
+            );
+        }
+        catch (Exception ex)
+        {
+            this.Log.Warning($"无法记录附近地图标记：{ex.Message}");
+        }
+    }
+
     /// <summary>Get the horizontal distance between two world positions.</summary>
     /// <param name="from">The first world position.</param>
     /// <param name="to">The second world position.</param>
@@ -732,6 +809,20 @@ public class ModEntry : MelonMod
         float z = to.z - from.z;
 
         return Mathf.Sqrt((x * x) + (z * z));
+    }
+
+    /// <summary>Get a map detail's world position.</summary>
+    /// <param name="detail">The map detail.</param>
+    private Vector3 GetMapDetailPosition(MapDetail detail)
+    {
+        try
+        {
+            return detail.GetWorldPosition();
+        }
+        catch
+        {
+            return detail.transform.position;
+        }
     }
 
     /// <summary>Get the eight-way direction from one world position to another.</summary>
@@ -904,5 +995,50 @@ public class ModEntry : MelonMod
         {indent}    SceneLocationLocIdOverride: {transition.SceneLocationLocIdOverride ?? "<null>"}
         {indent}    Location: {transition.Location ?? "<null>"}
         """;
+    }
+
+    /// <summary>A nearby map detail included in debug logs.</summary>
+    private sealed class MapDetailDebugInfo
+    {
+        /// <summary>Construct an instance.</summary>
+        public MapDetailDebugInfo(float distance, Vector3 position, string locId, string localizedName, string spriteName, string iconType, bool isPreferred, bool isEligible, bool isIgnored)
+        {
+            this.Distance = distance;
+            this.Position = position;
+            this.LocId = locId;
+            this.LocalizedName = localizedName;
+            this.SpriteName = spriteName;
+            this.IconType = iconType;
+            this.IsPreferred = isPreferred;
+            this.IsEligible = isEligible;
+            this.IsIgnored = isIgnored;
+        }
+
+        /// <summary>The horizontal distance from the saved position.</summary>
+        public float Distance { get; }
+
+        /// <summary>The map detail's world position.</summary>
+        public Vector3 Position { get; }
+
+        /// <summary>The localization ID.</summary>
+        public string LocId { get; }
+
+        /// <summary>The localized display name.</summary>
+        public string LocalizedName { get; }
+
+        /// <summary>The map detail sprite name.</summary>
+        public string SpriteName { get; }
+
+        /// <summary>The map detail icon type.</summary>
+        public string IconType { get; }
+
+        /// <summary>Whether this map detail gets naming priority.</summary>
+        public bool IsPreferred { get; }
+
+        /// <summary>Whether this map detail can be used by automatic naming.</summary>
+        public bool IsEligible { get; }
+
+        /// <summary>Whether this map detail is explicitly ignored by automatic naming.</summary>
+        public bool IsIgnored { get; }
     }
 }

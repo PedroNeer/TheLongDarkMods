@@ -154,6 +154,10 @@ internal class ModConfig : JsonModSettings
     [Description("是否记录场景切换和快速旅行相关调试信息。此选项用于排查问题，不影响游戏内行为。")]
     public bool LogDebugInfo = false;
 
+    [Name("记录附近地图标记")]
+    [Description("保存目的地时，是否记录附近地图标记的名称、类型、距离和坐标。\n\n此选项用于校准自动命名规则，默认关闭以控制日志大小。")]
+    public bool LogNearbyMapDetails = false;
+
 
     /*********
     ** Public methods
