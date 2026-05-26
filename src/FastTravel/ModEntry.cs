@@ -101,9 +101,10 @@ public class ModEntry : MelonMod
             // saved destination
             else
             {
-                foreach (KeyCode key in this.Config.GetDestinationKeys().Distinct())
+                SaveModel data = this.DestinationManager.GetData();
+                foreach (KeyCode key in this.GetActiveDestinationKeys(data))
                 {
-                    if (key == KeyCode.None || !this.InteractionHelper.IsKeyJustPressed(key))
+                    if (!this.InteractionHelper.IsKeyJustPressed(key))
                         continue;
 
                     // apply
@@ -604,6 +605,25 @@ public class ModEntry : MelonMod
             .ThenBy(item => hotkeyOrder.TryGetValue(item.Entry.Hotkey, out int order) ? order : int.MaxValue)
             .ThenBy(item => item.Index)
             .Select(item => item.Entry);
+    }
+
+    /// <summary>Get all destination hotkeys that should be listened for.</summary>
+    /// <param name="data">The saved destination data.</param>
+    private IEnumerable<KeyCode> GetActiveDestinationKeys(SaveModel data)
+    {
+        HashSet<KeyCode> seen = [];
+
+        foreach (KeyCode hotkey in this.Config.GetDestinationKeys())
+        {
+            if (hotkey != KeyCode.None && seen.Add(hotkey))
+                yield return hotkey;
+        }
+
+        foreach (DestinationEntry entry in data.Destinations)
+        {
+            if (entry.Hotkey != KeyCode.None && seen.Add(entry.Hotkey))
+                yield return entry.Hotkey;
+        }
     }
 
     /// <summary>Get the display group for a destination entry.</summary>
