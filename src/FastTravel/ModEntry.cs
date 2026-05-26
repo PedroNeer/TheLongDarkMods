@@ -24,13 +24,6 @@ public class ModEntry : MelonMod
     /// <summary>The distance within which the destination is considered to be at a map landmark.</summary>
     private const float LandmarkNameOnlyDistance = 50f;
 
-    /// <summary>The furthest map detail to include in the debug log.</summary>
-    private const float MaxLoggedMapDetailDistance = 500f;
-
-    /// <summary>The maximum number of nearby map details to include in the debug log.</summary>
-    private const int MaxLoggedMapDetails = 20;
-
-
     /// <summary>The mod settings.</summary>
     private readonly ModConfig Config = new();
 
@@ -743,8 +736,6 @@ public class ModEntry : MelonMod
 
                 Vector3 detailPosition = this.GetMapDetailPosition(detail);
                 float detailDistance = this.GetHorizontalDistance(position, detailPosition);
-                if (detailDistance > MaxLoggedMapDetailDistance)
-                    continue;
 
                 string locId = detail.m_LocID ?? "";
                 string localizedName = "";
@@ -771,13 +762,12 @@ public class ModEntry : MelonMod
                 ));
             }
 
-            List<MapDetailDebugInfo> nearest = candidates
+            List<MapDetailDebugInfo> details = candidates
                 .OrderBy(candidate => candidate.Distance)
-                .Take(MaxLoggedMapDetails)
                 .ToList();
 
-            string rows = nearest.Count > 0
-                ? string.Join("\n", nearest.Select((candidate, index) =>
+            string rows = details.Count > 0
+                ? string.Join("\n", details.Select((candidate, index) =>
                     $"    {index + 1}. {candidate.Distance:0}m [{candidate.IconType}] preferred={candidate.IsPreferred}, eligible={candidate.IsEligible}, ignored={candidate.IsIgnored}; name='{candidate.LocalizedName}', locId='{candidate.LocId}', sprite='{candidate.SpriteName}', pos={candidate.Position}"
                 ))
                 : "    <none>";
@@ -789,7 +779,7 @@ public class ModEntry : MelonMod
                     display: {destination.GetDisplayName(showRegion: true)}
                     position: {position}
                     map details used for naming: {isOutdoors}
-                    showing: {nearest.Count}/{candidates.Count} within {MaxLoggedMapDetailDistance:0}m
+                    showing: {details.Count} total map details
                 {rows}
                 """
             );
